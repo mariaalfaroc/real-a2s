@@ -350,7 +350,7 @@ MigrationBackup/
 .ionide/
 
 # Logs
-*.logs
-CHECK/
+# *.logs
+# CHECK/
 DATASETS/
 joblib_cache/
