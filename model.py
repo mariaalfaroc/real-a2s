@@ -64,11 +64,12 @@ class CRNN(nn.Module):
 # ----------------------------------------------------------------
 
 class CTCTrainedCRNN():
-    def __init__(self, dictionaries, device):
+    def __init__(self, dictionaries, encoding, device):
         super(CTCTrainedCRNN, self).__init__()
         self.w2i, self.i2w = dictionaries
 
         self.device = device
+        self.encoding = encoding
 
         self.model = CRNN(vocab_size=len(self.w2i) + 1) # +1 for the CTC blank!
         self.compile()
@@ -111,7 +112,7 @@ class CTCTrainedCRNN():
         XFVal, YFVal = val_data
         # Preprocess val data and leave in RAM
         XVal, XLVal = zip(*[preprocess_audio(xf, self.model.encoder.width_reduction) for xf in XFVal])
-        YVal = [preprocess_label(yf, training=False, w2i=self.w2i) for yf in YFVal]
+        YVal = [preprocess_label(yf, training=False, w2i=self.w2i, encoding=self.encoding) for yf in YFVal]
 
         self.on_train_begin(patience)
         for epoch in range(epochs):

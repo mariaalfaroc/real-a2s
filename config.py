@@ -14,11 +14,11 @@ def set_source_data_dirs(source_path: str):
 
     source_dir = pathlib.Path(f"DATASETS/{source_path}")
     audios_dir = source_dir / "wav"
-    labels_dir = source_dir / "semantic"
+    labels_dir = source_dir / "krn"
     vocab_dir = source_dir / "dictionaries"
     output_dir = source_dir / "experiments"
     os.makedirs(vocab_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
 
     audio_extn = ".wav"
-    label_extn = ".semantic"
+    label_extn = ".krn"

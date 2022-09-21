@@ -20,9 +20,10 @@ def str2bool(v: str) -> bool:
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Supervised training arguments.")
-    parser.add_argument("--dataset", type=str, default="Primus", choices=["Primus"], help="Name of the dataset to use")
+    parser.add_argument("--dataset", type=str, default="Primus", choices=["Primus","Sax"], help="Name of the dataset to use")
     parser.add_argument("--num_samples", type=int, required=True, help="Dataset size")
     parser.add_argument("--multirest", type=str2bool, default="False", help="Whether to use samples that contain multirest")
+    parser.add_argument("--encoding", type=str, default="kern", choices=["kern","decoupled"], help="Encoding type to use")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
     parser.add_argument("--epochs", type=int, default=300, help="Training epochs")
     parser.add_argument("--patience", type=int, default=20, help="Number of epochs with no improvement after which training will be stopped")
@@ -50,6 +51,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     nameOfVoc = "Vocab"
     nameOfVoc = nameOfVoc + "_woutmultirest" if not args.multirest else nameOfVoc
+    nameOfVoc = nameOfVoc + "_" + args.encoding
 
     # k-fold experiment
     results = []
@@ -65,10 +67,10 @@ def main():
         # Data
         # 60% - 20% - 20% -> Partitions depend on the number of iteration
         XFTrain, YFTrain, XFVal, YFVal, XFTest, YFTest = load_data(num_samples=args.num_samples, num_iter=num_iter, multirest=args.multirest)
-        w2i, i2w = check_and_retrieveVocabulary(nameOfVoc=nameOfVoc, multirest=args.multirest)
+        w2i, i2w = check_and_retrieveVocabulary(nameOfVoc=nameOfVoc, multirest=args.multirest, encoding=args.encoding)
         
         # Model
-        model = CTCTrainedCRNN(dictionaries=(w2i, i2w), device=device)
+        model = CTCTrainedCRNN(dictionaries=(w2i, i2w), encoding=args.encoding, device=device)
 
         # Train, validate, and test
         test_ser = model.fit(
@@ -77,7 +79,8 @@ def main():
                 batch_size=args.batch_size,
                 width_reduction=model.model.encoder.width_reduction,
                 w2i=w2i,
-                device=device
+                device=device,
+                encoding=args.encoding
             ),
             epochs=args.epochs,
             steps_per_epoch=len(XFTrain) // args.batch_size,

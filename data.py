@@ -7,6 +7,8 @@ from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from madmom.audio.spectrogram import LogarithmicFilterbank, LogarithmicFilteredSpectrogram
 
+from encoding_convertions import krnConverter
+
 import config
 
 # joblib settings!
@@ -33,9 +35,21 @@ def load_data(num_samples: int, num_iter: int, multirest: bool):
     labels = sorted(glob.glob(str(config.labels_dir) + "/*" + config.label_extn))
     if not multirest:
         labels = filter_multirest(YFiles=labels)
-    audios = list(map(lambda f: str(f).replace(str(config.labels_dir), str(config.audios_dir)).replace(config.label_extn, config.audio_extn), labels))
 
-    idx = np.random.choice(np.arange(len(labels)), num_samples, replace=False)
+    audios = sorted(glob.glob(str(config.audios_dir) + "/*" + config.audio_extn))
+
+
+    # Matching elements:
+    audios = [file.split("/")[-1].split(".")[0] for file in audios]
+    labels = [file.split("/")[-1].split(".")[0] for file in labels]
+    common_files = sorted(list(set(audios).intersection(labels)))
+
+    audios = [os.path.join(config.audios_dir, file + config.audio_extn) for file in common_files]
+    labels = [os.path.join(config.labels_dir, file + config.label_extn) for file in common_files]
+
+    
+    idx = np.arange(len(labels))
+    if num_samples > 0: idx = np.random.choice(idx, num_samples, replace=False)
 
     X = np.array(audios, dtype="object")[idx]
     Y = np.array(labels, dtype="object")[idx]
@@ -75,7 +89,7 @@ def get_spectrogram_from_file(audiofilename):
 
 # ---------- TRANSCRIPTION UTILS ---------- #
 
-def check_and_retrieveVocabulary(nameOfVoc, multirest):
+def check_and_retrieveVocabulary(nameOfVoc, multirest, encoding):
     w2ipath = config.vocab_dir / f"{nameOfVoc}w2i.npy"
     i2wpath = config.vocab_dir / f"{nameOfVoc}i2w.npy"
 
@@ -89,18 +103,22 @@ def check_and_retrieveVocabulary(nameOfVoc, multirest):
         YFiles = sorted(glob.glob(str(config.labels_dir) + "/*" + config.label_extn))
         if not multirest:
             YFiles = filter_multirest(YFiles)
-        w2i, i2w = make_vocabulary(nameOfVoc, YFiles)
+        w2i, i2w = make_vocabulary(nameOfVoc, YFiles, encoding)
 
     return w2i, i2w
 
-def make_vocabulary(nameOfVoc, YFiles):
+def make_vocabulary(nameOfVoc, YFiles, encoding):
     w2ipath = config.vocab_dir / f"{nameOfVoc}w2i.npy"
     i2wpath = config.vocab_dir / f"{nameOfVoc}i2w.npy"
 
+
+    krnParser = krnConverter()
+
     # Create vocabulary
-    vocabulary = []
+    vocabulary = list()
     for yf in YFiles: 
-        vocabulary.extend(open(yf, "r").read().split())
+        vocabulary.extend(krnParser.convert(yf, encoding))
+        # vocabulary.extend(open(yf, "r").read().split())
     vocabulary = sorted(set(vocabulary))
 
     w2i = dict()
@@ -128,8 +146,9 @@ def preprocess_audio(path, width_reduction):
         # [1, height, width]
     return x, x.shape[2] // width_reduction
 
-def preprocess_label(path, training, w2i):
-    y = open(path, "r").read().split()
+def preprocess_label(path, training, w2i, encoding):
+    krnParser = krnConverter()
+    y = krnParser.convert(path, encoding)
     if training:
         y = [w2i[w] for w in y]
         return y, len(y)
@@ -144,10 +163,10 @@ def ctc_preprocess(x, xl, y, yl, pad_index):
     y = np.array([i + [pad_index] * (max_length - len(i)) for i in y], dtype=np.int32)
     return torch.from_numpy(x), torch.tensor(xl, dtype=torch.int32), torch.from_numpy(y), torch.tensor(yl, dtype=torch.int32)
 
-def train_data_generator(*, XFiles, YFiles, batch_size, width_reduction, w2i, device):
+def train_data_generator(*, XFiles, YFiles, batch_size, width_reduction, w2i, device, encoding):
     # Load all data in RAM
     X, XL = zip(*[preprocess_audio(xf, width_reduction) for xf in XFiles])
-    Y, YL = zip(*[preprocess_label(yf, training=True, w2i=w2i) for yf in YFiles])
+    Y, YL = zip(*[preprocess_label(yf, training=True, w2i=w2i, encoding=encoding) for yf in YFiles])
 
     index = 0
     while True:
@@ -175,7 +194,7 @@ if __name__ == "__main__":
     XTrain, YTrain, XVal, YVal, XTest, YTest = load_data(num_samples=1000, num_iter=0, multirest=multirest)
     print(XTrain[:2], YTrain[:2])
 
-    w2i, i2w = check_and_retrieveVocabulary(nameOfVoc=nameOfVoc, multirest=multirest)
+    w2i, i2w = check_and_retrieveVocabulary(nameOfVoc=nameOfVoc, multirest=multirest, encoding = 'kern')
     print(w2i)
     print("Vocabulary size:", len(w2i.keys()))
     
