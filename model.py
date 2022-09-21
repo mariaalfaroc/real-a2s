@@ -151,7 +151,7 @@ class CTCTrainedCRNN():
         # Preprocess test data and leave in RAM
         XFTest, YFTest = test_data
         XTest, XLTest = zip(*[preprocess_audio(xf, self.model.encoder.width_reduction) for xf in XFTest])
-        YTest = [preprocess_label(yf, training=False, w2i=self.w2i) for yf in YFTest]
+        YTest = [preprocess_label(yf, training=False, w2i=self.w2i, encoding=self.encoding) for yf in YFTest]
         # Loading best weights
         self.load(path=weights_path, map_location=self.device)
         self.model.eval()

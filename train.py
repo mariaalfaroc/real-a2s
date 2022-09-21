@@ -47,7 +47,7 @@ def main():
     # Data globals
     config.set_source_data_dirs(source_path=args.dataset)
     print(f"Data used {config.source_dir.stem}")
-    output_dir = config.output_dir / f"{args.num_samples}"
+    output_dir = config.output_dir / f"Samples_{args.num_samples}_{args.encoding}"
     os.makedirs(output_dir, exist_ok=True)
     nameOfVoc = "Vocab"
     nameOfVoc = nameOfVoc + "_woutmultirest" if not args.multirest else nameOfVoc
