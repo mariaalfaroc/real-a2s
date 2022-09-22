@@ -1,4 +1,4 @@
-import os, argparse, gc, random
+import os, argparse, gc, random, config
 
 import torch
 import numpy as np
@@ -23,7 +23,7 @@ def parse_arguments():
     parser.add_argument("--dataset", type=str, default="Primus", choices=["Primus","Sax"], help="Name of the dataset to use")
     parser.add_argument("--num_samples", type=int, required=True, help="Dataset size")
     parser.add_argument("--multirest", type=str2bool, default="False", help="Whether to use samples that contain multirest")
-    parser.add_argument("--encoding", type=str, default="kern", choices=["kern","decoupled"], help="Encoding type to use")
+    parser.add_argument("--encoding", type=str, default="kern", choices=config.encoding_options, help="Encoding type to use")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
     parser.add_argument("--epochs", type=int, default=300, help="Training epochs")
     parser.add_argument("--patience", type=int, default=20, help="Number of epochs with no improvement after which training will be stopped")

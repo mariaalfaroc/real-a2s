@@ -1,5 +1,8 @@
 import os, pathlib
 
+encoding_options = ['kern', 'decoupled', 'decoupled_dot']
+
+
 # Dataset available: PrIMuS
 # It follows the structure set in set_data_dirs()
 def set_source_data_dirs(source_path: str):
