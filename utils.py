@@ -101,27 +101,41 @@ def compute_MV2H(y_true, y_pred):
 
     MV2H_global = MV2H(multi_pitch = 0, voice = 0, meter = 0, harmony = 0, note_value = 0)
     for it in range(len(y_true)):
-        # Obtaining MusicXML:
+        # # Obtaining MusicXML:
+        # y_true_krn = retrieve_krn(y_true[it])
+        # with open('y_true.krn','w') as fout:
+        #     for u in y_true_krn: fout.write(u + '\n')
+        # a = converterm21.parse('y_true.krn').write('musicxml')
+        # shutil.copyfile(a, 'y_true.musicxml')
+
+        # y_pred_krn = retrieve_krn(y_pred[it])
+        # with open('y_pred.krn','w') as fout:
+        #     for u in y_pred_krn: fout.write(u + '\n')
+        # a = converterm21.parse('y_pred.krn').write('musicxml')
+        # shutil.copyfile(a, 'y_pred.musicxml')
+
+        # # Converting to MIDI:
+        # ### True:
+        # line = './' + config.musescore_path + ' -o y_true.mid y_true.musicxml'
+        # os.system(line)
+
+        # ### Pred:
+        # line = './' + config.musescore_path + ' -o y_pred.mid y_pred.musicxml'
+        # os.system(line)
+
         y_true_krn = retrieve_krn(y_true[it])
         with open('y_true.krn','w') as fout:
             for u in y_true_krn: fout.write(u + '\n')
-        a = converterm21.parse('y_true.krn').write('musicxml')
-        shutil.copyfile(a, 'y_true.musicxml')
+        a = converterm21.parse('y_true.krn').write('midi')
+        shutil.copyfile(a, 'y_true.mid')
 
         y_pred_krn = retrieve_krn(y_pred[it])
         with open('y_pred.krn','w') as fout:
             for u in y_pred_krn: fout.write(u + '\n')
-        a = converterm21.parse('y_pred.krn').write('musicxml')
-        shutil.copyfile(a, 'y_pred.musicxml')
+        a = converterm21.parse('y_pred.krn').write('midi')
+        shutil.copyfile(a, 'y_pred.mid')
 
-        # Converting to MIDI:
-        ### True:
-        line = './' + config.musescore_path + ' -o y_true.mid y_true.musicxml'
-        os.system(line)
 
-        ### Pred:
-        line = './' + config.musescore_path + ' -o y_pred.mid y_pred.musicxml'
-        os.system(line)
 
         # Converting to TXT:
         ### True:
