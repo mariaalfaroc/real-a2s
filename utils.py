@@ -54,7 +54,7 @@ def write_plot_results(plotfile, results):
         datfile.write(f"{np.mean(results)}\t{np.std(results)}\n")
 
 
-def retrieve_krn(in_seq: list) -> list:
+def decoupledDotKern2Kern(in_seq: list) -> list:
     out_seq = list()
     it = 0
     while it < len(in_seq):
@@ -94,6 +94,54 @@ def retrieve_krn(in_seq: list) -> list:
 
 
 
+def decoupledKern2Kern(in_seq: list) -> list:
+    out_seq = list()
+    it = 0
+    while it < len(in_seq):
+        if in_seq[it].startswith('*') or in_seq[it] == '=':
+            out_seq.append(in_seq[it])
+            it += 1
+        else:
+            new_token = ''
+            # Duration:
+            extract_duration = False
+            while not extract_duration and it < len(in_seq):
+                try:
+                    int(in_seq[it])
+                    new_token = in_seq[it]
+                    extract_duration = True
+                except:
+                    pass
+                it += 1
+
+            extract_dot = False
+            while not extract_dot and it < len(in_seq):
+                if in_seq[it] == '.':
+                    new_token += '.'
+                    it += 1
+                elif list(set(in_seq[it].lower()))[0] in ['a','b','c','d','e','f','g', 'r']:
+                    extract_dot = True
+
+
+            # Pitch:
+            extract_pitch = False
+            while not extract_pitch and it < len(in_seq):
+                if list(set(in_seq[it].lower()))[0] in ['a','b','c','d','e','f','g', 'r']:
+                    new_token += in_seq[it]
+                    extract_pitch = True
+                it += 1
+
+            # Alteration:
+            if it < len(in_seq):
+                if in_seq[it] == '-' or in_seq[it] == '#':
+                    new_token += in_seq[it]
+                    it += 1
+
+                out_seq.append(new_token)
+
+    return out_seq
+
+
 
 def compute_MV2H(y_true: list, y_pred: list, encoding: str):
 
@@ -106,9 +154,11 @@ def compute_MV2H(y_true: list, y_pred: list, encoding: str):
         if encoding == 'kern':
             y_true_krn = y_true[it]
         elif encoding == 'decoupled_dot':
-            y_true_krn = retrieve_krn(y_true[it])
+            y_true_krn = decoupledDotKern2Kern(y_true[it])
+        elif encoding == 'decoupled':
+            y_true_krn = decoupledKern2Kern(y_true[it])
+        y_true_all.append(y_true_krn.copy())
         y_true_krn.insert(0, '**kern')
-        y_true_all.append(y_true_krn)
         with open('y_true.krn','w') as fout:
             for u in y_true_krn: fout.write(u + '\n')
         a = converterm21.parse('y_true.krn').write('midi')
@@ -118,9 +168,11 @@ def compute_MV2H(y_true: list, y_pred: list, encoding: str):
         if encoding == 'kern':
             y_pred_krn = y_pred[it]
         elif encoding == 'decoupled_dot':
-            y_pred_krn = retrieve_krn(y_pred[it])
+            y_pred_krn = decoupledDotKern2Kern(y_pred[it])
+        elif encoding == 'decoupled':
+            y_pred_krn = decoupledKern2Kern(y_true[it])
+        y_pred_all.append(y_pred_krn.copy())
         y_pred_krn.insert(0, '**kern')
-        y_pred_all.append(y_pred_krn)
         with open('y_pred.krn','w') as fout:
             for u in y_pred_krn: fout.write(u + '\n')
         a = converterm21.parse('y_pred.krn').write('midi')
@@ -182,12 +234,6 @@ if __name__ == '__main__':
     Y = [['*clefG2','*k[b-]','*M6/8','*MM120','=','4.','f','4.','b','-','=','4.','g','4.','b','-','=','8','e','8','g','8','b','-','8','f','8','a','8','b','-','=','4.','cc','4','dd','8','ee','=','4','b','-','8','dd','4','cc','8','bb','-','=','8','ccc','8','bb','-','8','aa','4.','dd','=','8','r','8','dd','8','r','8','dd','8','r','8','dd','=','8','r','8','ee','8','r','8','ee','8','r','8','ee','=','2.','ccc','='],\
     ['*clefG2','*k[b-e-a-d-g-c-f-]','*M6/8','*MM90','=','4.','aa','-','4.','fff','-','=','4.','ccc','-','4.','gg','-','=','4','cc','-','8','ee','-','4','gg','-','8','bb','-','=','4.','ccc','-','4','ddd','-','8','gg','-','=','8','ccc','-','8','bb','-','8','aa','-','8','gg','-','8','ff','-','8','ee','-','=','8','aa','-','8','gg','-','8','ff','-','4.','bb','-','=','8','ccc','-','8','eee','-','8','aa','-','8','gg','-','8','aa','-','8','bb','-','=','4.','ccc','-','4.','aa','-','=','2.','ddd','-','=']]
     YPRED = [[], []]
-    MV2H_res, ser = compute_MV2H(Y,YPRED, 'decoupled_dot')
+    MV2H_res, ser = compute_MV2H(Y, YPRED, 'decoupled_dot')
     
-    # in_seq = ['*clefG2', '*k[b-e-a-d-g-]', '*M3/4', '*MM120', '=', '4.', 'bb', '-', '16', 'ddd', '16', 'eee', '-', '=', '16', 'ccc', '16', 'aa', '4', 'gg', '16', 'gg', '16', 'aa', '16', 'ff', '16', 'cc', '8', 'cc', '8', 'dd', '4', 'r', '8', 'ee', '-', '8', 'gg', '4', 'r', '8', 'ff', '8', 'aa', '4', 'r', '=', '4', 'gg', '8', 'ccc', '16', 'ddd', '=', '2.', 'aa', '=']
-    # out = retrieve_krn(in_seq)
-
-    prueba = ['*clefG2', '*k[b-]', '*M4/4', '2', '=']
-    out = retrieve_krn(prueba)
-
     print("hello")
