@@ -8,7 +8,7 @@ from torchinfo import summary
 import torch.nn.functional as F
 
 from data import preprocess_audio, preprocess_label, IMG_HEIGHT
-from utils import ctc_greedy_decoder, compute_ser
+from utils import ctc_greedy_decoder, compute_ser, compute_MV2H
 
 class CNN(nn.Module):
     def __init__(self):
@@ -156,8 +156,15 @@ class CTCTrainedCRNN():
         self.load(path=weights_path, map_location=self.device)
         self.model.eval()
         print("Evaluating best validation model over test data")
-        test_ser = self.evaluate(X=XTest, XL=XLTest, Y=YTest, batch_size=batch_size, print_random_samples=True)
+        test_ser, test_mv2h = self.evaluate(X=XTest, XL=XLTest, Y=YTest, batch_size=batch_size, print_random_samples=True, compute_MV2H_bool=True)
         self.logs["test_ser"] = test_ser
+
+        self.logs["test_multi_pitch"] = test_mv2h.multi_pitch
+        self.logs["test_voice"] = test_mv2h.voice
+        self.logs["test_meter"] = test_mv2h.meter
+        self.logs["test_harmony"] = test_mv2h.harmony
+        self.logs["test_note_value"] = test_mv2h.note_value
+
 
         # Save logs
         print(f"Saving experiment's logs to {logs_path}")
@@ -165,7 +172,7 @@ class CTCTrainedCRNN():
 
         return test_ser
 
-    def evaluate(self, X, XL, Y, batch_size, print_ser=True, print_random_samples=False):
+    def evaluate(self, X, XL, Y, batch_size, print_ser=True, print_random_samples=False, compute_MV2H_bool=False):
         YPRED = []
 
         with torch.no_grad():
@@ -182,6 +189,8 @@ class CTCTrainedCRNN():
 
         ser = compute_ser(Y, YPRED)
 
+
+
         if print_ser:
             print(f"SER (%): {ser:.2f} - From {len(Y)} samples")
 
@@ -190,7 +199,15 @@ class CTCTrainedCRNN():
             print(f"Prediction - {YPRED[index]}")
             print(f"Ground truth - {Y[index]}")
 
-        return ser
+        if compute_MV2H_bool:
+            mv2h = compute_MV2H(Y, YPRED)
+            return ser, mv2h
+        else:
+            return ser
+
+
+
+
 
     def save_logs(self, path):
         # The last line on the CSV file is the one corresponding to the best validation model

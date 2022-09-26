@@ -30,7 +30,6 @@ def filter_multirest(YFiles: list):
 
     return YFiles_filetered
 
-@memory.cache
 def load_data(num_samples: int, num_iter: int, multirest: bool):
     labels = sorted(glob.glob(str(config.labels_dir) + "/*" + config.label_extn))
     if not multirest:
@@ -63,6 +62,7 @@ def load_data(num_samples: int, num_iter: int, multirest: bool):
 
     return XTrain.tolist(), YTrain.tolist(), XVal.tolist(), YVal.tolist(), XTest.tolist(), YTest.tolist()
 
+@memory.cache
 def get_spectrogram_from_file(audiofilename):
 	audio_options = dict(
 		num_channels=1,

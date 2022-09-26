@@ -1,6 +1,8 @@
 import os, pathlib
 
 encoding_options = ['kern', 'decoupled', 'decoupled_dot', 'lilypond', 'lilypond_decoupled']
+musescore_path = 'musescore.AppImage'
+
 
 # Dataset available: PrIMuS
 # It follows the structure set in set_data_dirs()
