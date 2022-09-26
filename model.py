@@ -156,16 +156,16 @@ class CTCTrainedCRNN():
         self.load(path=weights_path, map_location=self.device)
         self.model.eval()
         print("Evaluating best validation model over test data")
-        test_ser, test_mv2h = self.evaluate(X=XTest, XL=XLTest, Y=YTest, batch_size=batch_size, print_random_samples=True, compute_MV2H_bool=True)
+        test_ser, test_mv2h, test_new_ser = self.evaluate(X=XTest, XL=XLTest, Y=YTest, batch_size=batch_size, print_random_samples=True, compute_MV2H_bool=True)
         self.logs["test_ser"] = test_ser
 
+        self.logs["test_new_ser"] = test_new_ser
         self.logs["test_multi_pitch"] = test_mv2h.multi_pitch
         self.logs["test_voice"] = test_mv2h.voice
         self.logs["test_meter"] = test_mv2h.meter
         self.logs["test_harmony"] = test_mv2h.harmony
         self.logs["test_note_value"] = test_mv2h.note_value
-
-
+        
         # Save logs
         print(f"Saving experiment's logs to {logs_path}")
         self.save_logs(logs_path)
@@ -189,8 +189,6 @@ class CTCTrainedCRNN():
 
         ser = compute_ser(Y, YPRED)
 
-
-
         if print_ser:
             print(f"SER (%): {ser:.2f} - From {len(Y)} samples")
 
@@ -200,8 +198,8 @@ class CTCTrainedCRNN():
             print(f"Ground truth - {Y[index]}")
 
         if compute_MV2H_bool:
-            mv2h = compute_MV2H(Y, YPRED)
-            return ser, mv2h
+            mv2h, new_ser = compute_MV2H(Y, YPRED)
+            return ser, mv2h, new_ser
         else:
             return ser
 
