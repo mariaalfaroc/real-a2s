@@ -123,7 +123,10 @@ def decoupledKern2Kern(in_seq: list) -> list:
                     extract_dot = True
                 else:
                     it += 1
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/master
 
             # Pitch:
             extract_pitch = False
@@ -139,7 +142,7 @@ def decoupledKern2Kern(in_seq: list) -> list:
                     new_token += in_seq[it]
                     it += 1
 
-                out_seq.append(new_token)
+            if extract_pitch: out_seq.append(new_token)
 
     return out_seq
 
@@ -172,7 +175,7 @@ def compute_MV2H(y_true: list, y_pred: list, encoding: str):
         elif encoding == 'decoupled_dot':
             y_pred_krn = decoupledDotKern2Kern(y_pred[it])
         elif encoding == 'decoupled':
-            y_pred_krn = decoupledKern2Kern(y_true[it])
+            y_pred_krn = decoupledKern2Kern(y_pred[it])
         y_pred_all.append(y_pred_krn.copy())
         y_pred_krn.insert(0, '**kern')
         with open('y_pred.krn','w') as fout:
