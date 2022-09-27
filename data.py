@@ -30,37 +30,54 @@ def filter_multirest(YFiles: list):
 
     return YFiles_filetered
 
-def load_data(num_samples: int, num_iter: int, multirest: bool):
-    labels = sorted(glob.glob(str(config.labels_dir) + "/*" + config.label_extn))
+def filter_multirest_two_lists(XFiles: list, YFiles: list):
+    YFiles_filetered = YFiles.copy()
+    XFiles_filetered = XFiles.copy()
+
+    for it in range(len(YFiles)):
+        data =  open(YFiles[it], "r").read()
+        if data.count("multirest") > 0:
+            YFiles_filetered.remove(YFiles[it])
+            XFiles_filetered.remove(XFiles[it])
+
+    print(f"Removed {len(YFiles) - len(YFiles_filetered)} files")
+
+    return XFiles_filetered, YFiles_filetered
+
+
+
+
+def load_data_from_files(*args):
+    train_path, val_path, test_path, multirest = args
+
+    # Loading train:
+    with open(train_path) as f:
+        in_file = f.read().splitlines()
+    XTrain  = [u.split()[0] for u in in_file]
+    YTrain  = [u.split()[1] for u in in_file]
     if not multirest:
-        labels = filter_multirest(YFiles=labels)
-
-    audios = sorted(glob.glob(str(config.audios_dir) + "/*" + config.audio_extn))
+        XTrain, YTrain = filter_multirest_two_lists(XTrain, YTrain)
 
 
-    # Matching elements:
-    audios = [file.split("/")[-1].split(".")[0] for file in audios]
-    labels = [file.split("/")[-1].split(".")[0] for file in labels]
-    common_files = sorted(list(set(audios).intersection(labels)))
+    # Loading validation:
+    with open(val_path) as f:
+        in_file = f.read().splitlines()
+    XVal  = [u.split()[0] for u in in_file]
+    YVal  = [u.split()[1] for u in in_file]
+    if not multirest:
+        XVal, YVal = filter_multirest_two_lists(XVal, YVal)
 
-    audios = [os.path.join(config.audios_dir, file + config.audio_extn) for file in common_files]
-    labels = [os.path.join(config.labels_dir, file + config.label_extn) for file in common_files]
 
-    
-    idx = np.arange(len(labels))
-    if num_samples > 0: idx = np.random.choice(idx, num_samples, replace=False)
+    # Loading test:
+    with open(test_path) as f:
+        in_file = f.read().splitlines()
+    XTest  = [u.split()[0] for u in in_file]
+    YTest  = [u.split()[1] for u in in_file]
+    if not multirest:
+        XTest, YTest = filter_multirest_two_lists(XTest, YTest)
 
-    X = np.array(audios, dtype="object")[idx]
-    Y = np.array(labels, dtype="object")[idx]
+    return XTrain, YTrain, XVal, YVal, XTest, YTest
 
-    # 60% - 20% - 20%
-    XTrain, XValTest, YTrain, YValTest = train_test_split(X, Y, test_size=0.4, random_state=num_iter)
-    XVal, XTest, YVal, YTest = train_test_split(XValTest, YValTest, test_size=0.5, random_state=num_iter)
-    print(f"Train size: {len(XTrain)}")
-    print(f"Val size: {len(XVal)}")
-    print(f"Test size: {len(XTest)}")
-
-    return XTrain.tolist(), YTrain.tolist(), XVal.tolist(), YVal.tolist(), XTest.tolist(), YTest.tolist()
 
 @memory.cache
 def get_spectrogram_from_file(audiofilename):
@@ -88,8 +105,12 @@ def get_spectrogram_from_file(audiofilename):
 	return x
 
 # ---------- TRANSCRIPTION UTILS ---------- #
+def check_and_retrieveVocabulary_from_files(nameOfVoc, multirest, encoding, YTrain, YVal, YTest):
 
-def check_and_retrieveVocabulary(nameOfVoc, multirest, encoding):
+    YFiles = YTrain.copy()
+    YFiles.extend(YVal)
+    YFiles.extend(YTest)
+
     w2ipath = config.vocab_dir / f"{nameOfVoc}w2i.npy"
     i2wpath = config.vocab_dir / f"{nameOfVoc}i2w.npy"
 
@@ -100,12 +121,12 @@ def check_and_retrieveVocabulary(nameOfVoc, multirest, encoding):
         w2i = np.load(w2ipath, allow_pickle=True).item()
         i2w = np.load(i2wpath, allow_pickle=True).item()
     else:
-        YFiles = sorted(glob.glob(str(config.labels_dir) + "/*" + config.label_extn))
         if not multirest:
             YFiles = filter_multirest(YFiles)
         w2i, i2w = make_vocabulary(nameOfVoc, YFiles, encoding)
 
     return w2i, i2w
+
 
 def make_vocabulary(nameOfVoc, YFiles, encoding):
     w2ipath = config.vocab_dir / f"{nameOfVoc}w2i.npy"
@@ -178,31 +199,43 @@ def train_data_generator(*, XFiles, YFiles, batch_size, width_reduction, w2i, de
             X, XL, Y, YL = shuffle(X, XL, Y, YL, random_state=42)
 
 if __name__ == "__main__":
-    from torchvision.utils import make_grid, save_image
+    # from torchvision.utils import make_grid, save_image
 
-    random.seed(42)
-    np.random.seed(42)
-    torch.manual_seed(42)
+    # random.seed(42)
+    # np.random.seed(42)
+    # torch.manual_seed(42)
 
-    os.makedirs("CHECK", exist_ok=True)
+    # os.makedirs("CHECK", exist_ok=True)
     
-    multirest = False
-    nameOfVoc = "Vocab"
-    nameOfVoc = nameOfVoc + "_woutmultirest" if not multirest else nameOfVoc
+    # multirest = False
+    # nameOfVoc = "Vocab"
+    # nameOfVoc = nameOfVoc + "_woutmultirest" if not multirest else nameOfVoc
 
-    config.set_source_data_dirs("Primus")
-    XTrain, YTrain, XVal, YVal, XTest, YTest = load_data(num_samples=1000, num_iter=0, multirest=multirest)
-    print(XTrain[:2], YTrain[:2])
+    # config.set_source_data_dirs("Primus")
+    # XTrain, YTrain, XVal, YVal, XTest, YTest = load_data(num_samples=1000, num_iter=0, multirest=multirest)
+    # print(XTrain[:2], YTrain[:2])
 
-    w2i, i2w = check_and_retrieveVocabulary(nameOfVoc=nameOfVoc, multirest=multirest, encoding = 'kern')
-    print(w2i)
-    print("Vocabulary size:", len(w2i.keys()))
+    # w2i, i2w = check_and_retrieveVocabulary(nameOfVoc=nameOfVoc, multirest=multirest, encoding = 'kern')
+    # print(w2i)
+    # print("Vocabulary size:", len(w2i.keys()))
     
-    gen = train_data_generator(XFiles=XTrain, YFiles=YTrain, batch_size=16, width_reduction=2, w2i=w2i, device=torch.device("cpu"))
-    x, xl, y, yl = next(gen)
-    print(x.shape, xl.shape, y.shape, yl.shape)
-    print(f"Shape with padding: {y[0].shape}; Original shape: {yl[0].numpy()}")
-    print([i2w[int(i)] for i in y[0]])
+    # gen = train_data_generator(XFiles=XTrain, YFiles=YTrain, batch_size=16, width_reduction=2, w2i=w2i, device=torch.device("cpu"))
+    # x, xl, y, yl = next(gen)
+    # print(x.shape, xl.shape, y.shape, yl.shape)
+    # print(f"Shape with padding: {y[0].shape}; Original shape: {yl[0].numpy()}")
+    # print([i2w[int(i)] for i in y[0]])
 
-    save_image(make_grid(x, nrow=1), f"CHECK/x_batch.jpg")
-    save_image(x[0], f"CHECK/x0.jpg")
+    # save_image(make_grid(x, nrow=1), f"CHECK/x_batch.jpg")
+    # save_image(x[0], f"CHECK/x0.jpg")
+
+    files = [u for u in os.listdir('DATASETS/SARA/audiosWAV_tenor_sax') if u.endswith('.wav')]
+
+    with open('errors.txt', 'w') as fout:
+        for u in files:
+            try:
+                get_spectrogram_from_file(os.path.join('DATASETS/SARA/audiosWAV_tenor_sax', u))
+            except:
+                fout.write(os.path.join('!!!!! DATASETS/SARA/audiosWAV_tenor_sax', u) + '\n')
+                # print(os.path.join('!!!!! DATASETS/SARA/audiosWAV_tenor_sax', u))
+
+    print("hello")
