@@ -128,7 +128,7 @@ class CTCTrainedCRNN():
 
             # Validating
             self.model.eval()
-            val_ser = self.evaluate(X=XVal, XL=XLVal, Y=YVal, encoding = self.encoding, batch_size=batch_size, print_ser=False)
+            val_ser = self.evaluate(X=XVal, XL=XLVal, Y=YVal, encoding = self.encoding, aux_name = None, batch_size=batch_size, print_ser=False)
             self.logs["val_ser"].append(val_ser)
 
             end = time.time()   
@@ -156,7 +156,7 @@ class CTCTrainedCRNN():
         self.load(path=weights_path, map_location=self.device)
         self.model.eval()
         print("Evaluating best validation model over test data")
-        test_ser, test_mv2h, test_new_ser = self.evaluate(X=XTest, XL=XLTest, Y=YTest, batch_size=batch_size, encoding = self.encoding, print_random_samples=True, compute_MV2H_bool=True)
+        test_ser, test_mv2h, test_new_ser = self.evaluate(X=XTest, XL=XLTest, Y=YTest, batch_size=batch_size, aux_name = str(weights_path).split("/")[-2], encoding = self.encoding, print_random_samples=True, compute_MV2H_bool=True)
         self.logs["test_ser"] = test_ser
 
         self.logs["test_new_ser"] = test_new_ser
@@ -172,7 +172,7 @@ class CTCTrainedCRNN():
 
         return test_ser
 
-    def evaluate(self, X, XL, Y, batch_size, encoding, print_ser=True, print_random_samples=False, compute_MV2H_bool=False):
+    def evaluate(self, X, XL, Y, batch_size, aux_name, encoding, print_ser=True, print_random_samples=False, compute_MV2H_bool=False):
         YPRED = []
 
         with torch.no_grad():
@@ -198,7 +198,7 @@ class CTCTrainedCRNN():
             print(f"Ground truth - {Y[index]}")
 
         if compute_MV2H_bool:
-            mv2h, new_ser = compute_MV2H(Y, YPRED, encoding)
+            mv2h, new_ser = compute_MV2H(Y, YPRED, encoding, aux_name)
             return ser, mv2h, new_ser
         else:
             return ser
