@@ -163,7 +163,8 @@ def compute_MV2H(y_true: list, y_pred: list, encoding: str):
         with open('y_true.krn','w') as fout:
             for u in y_true_krn: fout.write(u + '\n')
         a = converterm21.parse('y_true.krn').write('midi')
-        shutil.copyfile(a, 'y_true.mid')
+        reference_midi_file = a.name
+        shutil.copyfile(a, reference_midi_file)
 
         ### Pred:
         if encoding == 'kern':
@@ -177,32 +178,33 @@ def compute_MV2H(y_true: list, y_pred: list, encoding: str):
         with open('y_pred.krn','w') as fout:
             for u in y_pred_krn: fout.write(u + '\n')
         a = converterm21.parse('y_pred.krn').write('midi')
-        shutil.copyfile(a, 'y_pred.mid')
+        predicted_midi_file = a.name
+        shutil.copyfile(a, predicted_midi_file)
 
         # Converting to TXT:
         ### True:
-        reference_midi_file = 'y_true.mid'
-        reference_file = 'y_true.txt'
-        converter = Converter(file=reference_midi_file, output=reference_file)
+        reference_txt_file = reference_midi_file.replace('mid', 'txt')
+        converter = Converter(file=reference_midi_file, output=reference_txt_file)
         converter.convert_file()
-        with open('y_true.txt','r') as fin:
+        with open(reference_txt_file,'r') as fin:
             f = [u.replace(".0", "") for u in fin.readlines()]
-        with open('y_true.txt','w') as fout:
+        with open(reference_txt_file,'w') as fout:
             for u in f: fout.write(u)
+        os.remove(reference_midi_file)
 
         ### Pred:
-        reference_midi_file = 'y_pred.mid'
-        reference_file = 'y_pred.txt'
-        converter = Converter(file=reference_midi_file, output=reference_file)
+        predicted_txt_file = predicted_midi_file.replace('mid', 'txt')
+        converter = Converter(file=predicted_midi_file, output=predicted_txt_file)
         converter.convert_file()
-        with open('y_pred.txt','r') as fin:
+        with open(predicted_txt_file,'r') as fin:
             f = [u.replace(".0", "") for u in fin.readlines()]
-        with open('y_pred.txt','w') as fout:
+        with open(predicted_txt_file,'w') as fout:
             for u in f: fout.write(u)
+        os.remove(predicted_midi_file)
 
         # Figures of merit:
-        reference_file = Music.from_file('y_true.txt')
-        transcription_file = Music.from_file('y_pred.txt')
+        reference_file = Music.from_file(reference_txt_file)
+        transcription_file = Music.from_file(predicted_txt_file)
 
         res_dict = MV2H(multi_pitch = 0, voice = 0, meter = 0, harmony = 0, note_value = 0)
         try:
@@ -214,9 +216,8 @@ def compute_MV2H(y_true: list, y_pred: list, encoding: str):
             MV2H_global.__note_value__ += res_dict.note_value
         except:
             pass
-        for u in [u for u in os.listdir() if u.endswith('.txt')]: os.remove(u)
-        for u in [u for u in os.listdir() if u.endswith('.mid')]: os.remove(u)
-        for u in [u for u in os.listdir() if u.endswith('.krn')]: os.remove(u)
+        os.remove(reference_txt_file)
+        os.remove(predicted_txt_file)
 
     MV2H_global.__multi_pitch__  /= len(y_true)
     MV2H_global.__voice__ /= len(y_true)

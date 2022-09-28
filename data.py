@@ -79,7 +79,6 @@ def load_data_from_files(*args):
     return XTrain, YTrain, XVal, YVal, XTest, YTest
 
 
-@memory.cache
 def get_spectrogram_from_file(audiofilename):
 	audio_options = dict(
 		num_channels=1,
