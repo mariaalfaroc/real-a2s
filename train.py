@@ -132,7 +132,7 @@ def main():
 
 
         # Changing the size of the output:
-        model.model.updateOutputSize(len(w2i_ft) + 1) # For the CTC blank!
+        model.updateCRNNOutput(w2i_ft, i2w_ft)
 
 
         # Destination paths:

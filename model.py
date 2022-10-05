@@ -57,8 +57,11 @@ class CRNN(nn.Module):
             output_size=vocab_size
         )
     
-    def updateOutputSize(self, vocab_size):
-        self.decoder.output.out_features = vocab_size
+
+
+
+
+        return
         
 
     def forward(self, x):
@@ -81,6 +84,19 @@ class CTCTrainedCRNN():
 
         # Print summary
         summary(self.model, input_size=[1, 1, IMG_HEIGHT, 256])
+
+    def updateCRNNOutput(self, w2i_ft, i2w_ft):
+        
+        in_features = self.model.decoder._modules['output'].in_features
+
+        self.model.decoder._modules['output'] = nn.Linear(in_features, len(w2i_ft) + 1)
+        self.w2i = w2i_ft
+        self.i2w = i2w_ft
+        self.compile()
+        self.model.to(self.device)
+        summary(self.model, input_size=[1, 1, IMG_HEIGHT, 256])
+
+
 
     def compile(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())
