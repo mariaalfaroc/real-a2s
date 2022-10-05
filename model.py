@@ -95,8 +95,13 @@ class CTCTrainedCRNN():
         self.compile()
         self.model.to(self.device)
         summary(self.model, input_size=[1, 1, IMG_HEIGHT, 256])
+        return
 
-
+    def freezeModel(self, list_update_elements):
+        for name, param in self.model.named_parameters():
+            if param.requires_grad and all([u not in name for u in list_update_elements]):
+                param.requires_grad = False
+        return
 
     def compile(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())

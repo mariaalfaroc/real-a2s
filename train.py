@@ -35,7 +35,12 @@ def parse_arguments():
     parser.add_argument("--test_ft", type=str, required = False, help="Fine-tuning test data partition")
     parser.add_argument("--trainmodel", type=str2bool, default="True", help="Whether to initially train the model")
     parser.add_argument("--finetune", type=str2bool, default="False", help="Whether to finetune the model")
+    parser.add_argument("--freeze", type=str, required=False, help="Layers to update when freezing the model", default=None)
     args = parser.parse_args()
+
+
+    if args.freeze is not None: args.freeze = [item for item in args.freeze.split(',')]
+    
     return args
 
 def main():
@@ -119,8 +124,9 @@ def main():
         nameOfVoc = nameOfVoc + "_" + args.train.split("-")[0] + 'FT'
         nameOfVoc = nameOfVoc + "_" + args.encoding
         multirest_appedix = "_withmultirest" if args.multirest else ''
-        model_filepath = output_dir / f"model{multirest_appedix}.pt"
-        logs_path = output_dir / f"results{multirest_appedix}.csv"
+        freeze_appendix = '_update' + "".join([u.capitalize() for u in args.freeze]) if args.freeze is not None else '_updateALL'
+        model_filepath = output_dir / f"model{multirest_appedix}{freeze_appendix}.pt"
+        logs_path = output_dir / f"results{multirest_appedix}{freeze_appendix}.csv"
 
         # Loading data:
         XFTrain_ft, YFTrain_ft, XFVal_ft, YFVal_ft, XFTest_ft, YFTest_ft = load_data_from_files(config.cases_dir / args.train_ft,\
@@ -133,6 +139,9 @@ def main():
 
         # Changing the size of the output:
         model.updateCRNNOutput(w2i_ft, i2w_ft)
+
+        # Freezing the model except for the specified parts:
+        if args.freeze is not None: model.freezeModel(list_update_elements=args.freeze)
 
 
         # Destination paths:
