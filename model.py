@@ -57,6 +57,10 @@ class CRNN(nn.Module):
             output_size=vocab_size
         )
     
+    def updateOutputSize(self, vocab_size):
+        self.decoder.output.out_features = vocab_size
+        
+
     def forward(self, x):
         x = self.encoder(x)
         return self.decoder(x)
