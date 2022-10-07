@@ -53,10 +53,13 @@ def load_data_from_files(*args):
     # Loading train:
     with open(train_path) as f:
         in_file = f.read().splitlines()
-    XTrain  = [u.split()[0] for u in in_file]
-    YTrain  = [u.split()[1] for u in in_file]
+    XTrain  = [u.split()[0] for u in in_file if not u.startswith('*')]
+    YTrain  = [u.split()[1] for u in in_file if not u.startswith('*')]
+    XTrain_FT  = [u.split()[0].split("*")[1] for u in in_file if u.startswith('*')]
+    YTrain_FT  = [u.split()[1] for u in in_file if u.startswith('*')]
     if not multirest:
         XTrain, YTrain = filter_multirest_two_lists(XTrain, YTrain)
+        XTrain_FT, YTrain_FT = filter_multirest_two_lists(XTrain_FT, YTrain_FT)
 
 
     # Loading validation:
@@ -76,7 +79,7 @@ def load_data_from_files(*args):
     if not multirest:
         XTest, YTest = filter_multirest_two_lists(XTest, YTest)
 
-    return XTrain, YTrain, XVal, YVal, XTest, YTest
+    return XTrain, YTrain, XVal, YVal, XTest, YTest, XTrain_FT, YTrain_FT
 
 
 def get_spectrogram_from_file(audiofilename):
@@ -104,11 +107,12 @@ def get_spectrogram_from_file(audiofilename):
 	return x
 
 # ---------- TRANSCRIPTION UTILS ---------- #
-def check_and_retrieveVocabulary_from_files(nameOfVoc, multirest, encoding, YTrain, YVal, YTest):
+def check_and_retrieveVocabulary_from_files(nameOfVoc, multirest, encoding, YTrain, YVal, YTest, YTrain_FT):
 
     YFiles = YTrain.copy()
     YFiles.extend(YVal)
     YFiles.extend(YTest)
+    YFiles.extend(YTrain_FT)
 
     w2ipath = config.vocab_dir / f"{nameOfVoc}w2i.npy"
     i2wpath = config.vocab_dir / f"{nameOfVoc}i2w.npy"

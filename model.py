@@ -97,10 +97,11 @@ class CTCTrainedCRNN():
         summary(self.model, input_size=[1, 1, IMG_HEIGHT, 256])
         return
 
-    def freezeModel(self, list_update_elements):
+    def updateModel(self, list_update_elements):
         for name, param in self.model.named_parameters():
             if param.requires_grad and all([u not in name for u in list_update_elements]):
                 param.requires_grad = False
+            print("{} -> Update: {}".format(name, param.requires_grad))
         return
 
     def compile(self):

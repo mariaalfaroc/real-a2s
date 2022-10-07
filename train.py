@@ -30,16 +30,13 @@ def parse_arguments():
     parser.add_argument("--train", type=str, required = True, help="Train data partition")
     parser.add_argument("--val", type=str, required = True, help="Validation data partition")
     parser.add_argument("--test", type=str, required = True, help="Test data partition")
-    parser.add_argument("--train_ft", type=str, required = False, help="Fine-tuning train data partition")
-    parser.add_argument("--val_ft", type=str, required = False, help="Fine-tuning validation data partition")
-    parser.add_argument("--test_ft", type=str, required = False, help="Fine-tuning test data partition")
     parser.add_argument("--trainmodel", type=str2bool, default="True", help="Whether to initially train the model")
     parser.add_argument("--finetune", type=str2bool, default="False", help="Whether to finetune the model")
-    parser.add_argument("--freeze", type=str, required=False, help="Layers to update when freezing the model", default=None)
+    parser.add_argument("--updateFT", type=str, required=False, help="Layers to update when freezing the model", default='ALL')
     args = parser.parse_args()
 
 
-    if args.freeze is not None: args.freeze = [item for item in args.freeze.split(',')]
+    args.updateFT = [item for item in args.updateFT.split(',')]
     
     return args
 
@@ -64,7 +61,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     nameOfVoc = "Vocab"
     nameOfVoc = nameOfVoc + "_woutmultirest" if not args.multirest else nameOfVoc
-    nameOfVoc = nameOfVoc + "_" + args.train.split("-")[0]
+    nameOfVoc = nameOfVoc + "_" + args.train.split("_")[0]
     nameOfVoc = nameOfVoc + "_" + args.encoding
 
 
@@ -74,10 +71,10 @@ def main():
     logs_path = output_dir / f"results{multirest_appedix}.csv"
 
     # Data
-    XFTrain, YFTrain, XFVal, YFVal, XFTest, YFTest = load_data_from_files(config.cases_dir / args.train,\
+    XFTrain, YFTrain, XFVal, YFVal, XFTest, YFTest, XTrain_FT, YTrain_FT = load_data_from_files(config.cases_dir / args.train,\
         config.cases_dir / args.val, config.cases_dir / args.test, args.multirest)
     w2i, i2w = check_and_retrieveVocabulary_from_files(nameOfVoc=nameOfVoc, multirest=args.multirest, encoding=args.encoding,\
-        YTrain = YFTrain, YVal = YFVal, YTest = YFTest)
+        YTrain = YFTrain, YVal = YFVal, YTest = YFTest, YTrain_FT = YTrain_FT)
     
     # Model
     model = CTCTrainedCRNN(dictionaries=(w2i, i2w), encoding=args.encoding, device=device)
@@ -116,42 +113,40 @@ def main():
         # summary(model.model)
 
         # Filepaths globals
-        case = args.train_ft.split("_")[0]
+        case = args.train.split("_")[0]
         output_dir = config.output_dir / f"{case}_{args.encoding}"
         os.makedirs(output_dir, exist_ok=True)
         nameOfVoc = "Vocab"
         nameOfVoc = nameOfVoc + "_woutmultirest" if not args.multirest else nameOfVoc
-        nameOfVoc = nameOfVoc + "_" + args.train.split("-")[0] + 'FT'
+        nameOfVoc = nameOfVoc + "_" + args.train.split("_")[0]
         nameOfVoc = nameOfVoc + "_" + args.encoding
         multirest_appedix = "_withmultirest" if args.multirest else ''
-        freeze_appendix = '_update' + "".join([u.capitalize() for u in args.freeze]) if args.freeze is not None else '_updateALL'
-        model_filepath = output_dir / f"model{multirest_appedix}{freeze_appendix}.pt"
-        logs_path = output_dir / f"results{multirest_appedix}{freeze_appendix}.csv"
+        updateFT_appendix = '_update' + "".join([u.capitalize() for u in args.updateFT])
+        model_filepath = output_dir / f"model{multirest_appedix}{updateFT_appendix}.pt"
+        logs_path = output_dir / f"results{multirest_appedix}{updateFT_appendix}.csv"
 
         # Loading data:
-        XFTrain_ft, YFTrain_ft, XFVal_ft, YFVal_ft, XFTest_ft, YFTest_ft = load_data_from_files(config.cases_dir / args.train_ft,\
-            config.cases_dir / args.val_ft, config.cases_dir / args.test_ft, args.multirest)
+        XFTrain, YFTrain, XFVal, YFVal, XFTest, YFTest, XTrain_FT, YTrain_FT = load_data_from_files(config.cases_dir / args.train,\
+            config.cases_dir / args.val, config.cases_dir / args.test, args.multirest)
+
+        assert len(XTrain_FT) > 0, "No data for fine tuning in the partition"
+        print("Fine tuning with {} elements".format(len(XTrain_FT)))
 
         # Dictionaries:
         w2i_ft, i2w_ft = check_and_retrieveVocabulary_from_files(nameOfVoc=nameOfVoc, multirest=args.multirest, encoding=args.encoding,\
-            YTrain = YFTrain_ft, YVal = YFVal_ft, YTest = YFTest_ft)
-
-
-        # Changing the size of the output:
-        model.updateCRNNOutput(w2i_ft, i2w_ft)
+            YTrain = YFTrain, YVal = YFVal, YTest = YFTest, YTrain_FT = YTrain_FT)
 
         # Freezing the model except for the specified parts:
-        if args.freeze is not None: model.freezeModel(list_update_elements=args.freeze)
-
+        if len(args.updateFT) >= 1 and args.updateFT[0] != 'ALL': model.updateModel(list_update_elements=args.updateFT)
 
         # Destination paths:
-        modelft_filepath = model_filepath.parent / model_filepath.name.replace('.pt', '_ft.pt')
-        logs_path = logs_path.parent / logs_path.name.replace('.pt', '_ft.pt')
-        
+        model_filepath = model_filepath.parent / model_filepath.name.replace('.pt', '_ft-{}epochs.pt'.format(args.epochs))
+        logs_path = logs_path.parent / logs_path.name.replace('.csv', '-{}epochs.csv'.format(args.epochs))
+
         # Fine-tune, validate, and test the model:
         test_ser = model.fit(
             train_data_generator(
-                XFiles=XFTrain_ft, YFiles=YFTrain_ft,
+                XFiles=XTrain_FT, YFiles=YTrain_FT,
                 batch_size=args.batch_size,
                 width_reduction=model.model.encoder.width_reduction,
                 w2i=w2i_ft,
@@ -159,9 +154,9 @@ def main():
                 encoding=args.encoding
             ),
             epochs=args.epochs,
-            steps_per_epoch=len(XFTrain_ft) // args.batch_size,
-            val_data=(XFVal_ft, YFVal_ft),
-            test_data=(XFTest_ft, YFTest_ft),
+            steps_per_epoch=len(XTrain_FT) // args.batch_size,
+            val_data=(XFVal, YFVal),
+            test_data=(XFTest, YFTest),
             batch_size=args.batch_size,
             patience=args.patience,
             weights_path=model_filepath,
