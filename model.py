@@ -107,7 +107,7 @@ class CTCTrainedCRNN():
     def compile(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())
         # The target index cannot be blank!
-        self.compute_ctc_loss = nn.CTCLoss(blank=len(self.w2i))
+        self.compute_ctc_loss = nn.CTCLoss(blank=len(self.w2i), zero_infinity = True)
 
     def save(self, path):
         torch.save(self.model.state_dict(), path)
