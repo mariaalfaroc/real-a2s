@@ -1,0 +1,3 @@
+- Añadir ejemplo de como correr los experimentos
+- Subir las particiones de los distintos experimentos a DATASETS/SARA/Cases
+- Lanzar pruebas para ver que todo va bien
