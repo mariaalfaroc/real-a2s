@@ -1,0 +1,45 @@
+# The synthesis process is Kern -> MIDI -> FluidSynth/MIDI-DDSP -> Audio
+
+DATASETS = {    
+    "ALTO_FluidSynth":
+    # Size = 925
+        {
+            "audios_dir": "ICASSP-Data/midi_alto_sax_audio_basic",          # Ex: octave_transposed_name.wav
+            "transcripts_dir": "ICASSP-Data/krn_alto_sax_transposed"        # Ex: transposed_name.krn/skm
+        },
+    
+    "TENOR_FluidSynth":
+    # Size = 925
+        {
+            "audios_dir": "ICASSP-Data/midi_tenor_sax_audio_basic",         # Ex: octave_transposed_name.wav         
+            "transcripts_dir": "ICASSP-Data/krn_tenor_sax_transposed"       # Ex: transposed_name.krn/skm
+        },
+    
+    "ALTO_MIDI-DDSP":
+    # Size = 925
+        {
+            "audios_dir": "ICASSP-Data/midi_alto_sax_audio",                # Ex: octave_transposed_name.wav
+            "transcripts_dir": "ICASSP-Data/krn_alto_sax_transposed"        # Ex: transposed_name.krn/skm
+        },
+    
+    "TENOR_MIDI-DDSP":
+    # Size = 925
+        {
+            "audios_dir": "ICASSP-Data/midi_tenor_sax_audio",               # Ex: octave_transposed_name.wav
+            "transcripts_dir": "ICASSP-Data/krn_tenor_sax_transposed"       # Ex: transposed_name.krn/skm
+        },
+    
+    "ALTO_JC":
+    # Size = 514
+        {
+            "audios_dir": "ICASSP-Data/audiosWAV_alto_sax",                 # Ex: name.wav
+            "transcripts_dir":"ICASSP-Data/krn_alto_sax_transposed"         # Ex: transposed_name.krn/skm
+        },
+    
+    "TENOR_JC":
+    # Size = 513 -> Missing DAugmentedScaleExercise.wav
+        {
+            "audios_dir": "ICASSP-Data/audiosWAV_tenor_sax",                # Ex: name.wav
+            "transcripts_dir": "ICASSP-Data/krn_tenor_sax_transposed"       # Ex: transposed_name.krn/skm
+        }
+}

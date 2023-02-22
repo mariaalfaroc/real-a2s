@@ -1,18 +1,14 @@
-import os, pathlib
+import os
+from pathlib import Path
 
-encoding_options = ['kern', 'decoupled', 'decoupled_dot', 'lilypond', 'lilypond_decoupled']
-
-
-# Dataset available: PrIMuS
-# It follows the structure set in set_data_dirs()
-def set_source_data_dirs(source_path: str):
-    
+# Dataset: SARA (JC DATASET) -> See DATASETS/SARA/info.txt
+def set_source_data_dirs() -> None:
     global source_dir
     global cases_dir
     global vocab_dir
     global output_dir
 
-    source_dir = pathlib.Path(f"DATASETS/{source_path}")
+    source_dir = Path(f"DATASETS/SARA")
     cases_dir = source_dir / "Cases"
     vocab_dir = source_dir / "dictionaries"
     output_dir = source_dir / "experiments"

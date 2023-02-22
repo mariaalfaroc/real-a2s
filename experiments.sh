@@ -1,7 +1,5 @@
 #!/bin/bash
 
-python -u train.py --dataset SARA --encoding kern --epochs 1 --train DEBUG-F0_train.dat --val DEBUG-F0_val.dat --test DEBUG-F0_test
-
-
-
-                
+# TODO: Add example on how to run the experiments
+# Normal training and fine-tuning
+# python -u train.py --encoding kern --epochs 1 --train Experiment7-F0_train.dat --val Experiment7-F0_val.dat --test Experiment7-F0_test.dat

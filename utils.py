@@ -1,15 +1,17 @@
 import os
-import config
-import numpy as np
-import torch
-from music21 import converter as converterm21
 import shutil
-from pyMV2H.converter.midi_converter import MidiConverter as Converter
-from pyMV2H.utils.music import Music
+from typing import List, Tuple
+
+import torch
 from pyMV2H.utils.mv2h import MV2H
 from pyMV2H.metrics.mv2h import mv2h
+from pyMV2H.utils.music import Music
+from music21 import converter as converterm21
+from pyMV2H.converter.midi_converter import MidiConverter as Converter
 
-def ctc_greedy_decoder(y_pred: torch.Tensor, xl: tuple, i2w: dict) -> list:
+from encoding_convertions import decoupledDotKern2Kern, decoupledKern2Kern
+
+def ctc_greedy_decoder(y_pred: torch.Tensor, xl: List[int], i2w: dict) -> List[List[str]]:
     y_pred_decoded = []
     for s, l in zip(y_pred, xl):
         # Get real lenght
@@ -21,6 +23,20 @@ def ctc_greedy_decoder(y_pred: torch.Tensor, xl: tuple, i2w: dict) -> list:
         # Convert to string; len(i2w) -> CTC-blank
         y_pred_decoded.append([i2w[int(i)] for i in s if int(i) != len(i2w)])
     return y_pred_decoded
+
+# --------- METRICS --------- #
+
+def compute_metrics(y_true: List[List[str]], y_pred: List[List[str]], encoding: str, aux_name: str) -> dict:
+    # ------------------------------- SER:
+    ser = compute_ser(y_true, y_pred)
+    # ------------------------------- MV2H:
+    mv2h_dict = compute_mv2h(y_true, y_pred, encoding, aux_name)
+    # ------------------------------- COMBINE:
+    metrics = {
+        "ser": ser,
+        **mv2h_dict
+    }
+    return metrics
 
 def levenshtein(a: list, b: list) -> int:
     n, m = len(a), len(b)
@@ -41,7 +57,7 @@ def levenshtein(a: list, b: list) -> int:
 
     return current[n]
 
-def compute_ser(y_true: list, y_pred: list) -> float:
+def compute_ser(y_true: List[List[str]], y_pred: List[List[str]]) -> float:
     ed_acc = 0
     length_acc = 0
     for t, h in zip(y_true, y_pred):
@@ -49,195 +65,115 @@ def compute_ser(y_true: list, y_pred: list) -> float:
         length_acc += len(t)
     return 100. * ed_acc / length_acc
 
-def write_plot_results(plotfile, results):
-    with open(plotfile, "w") as datfile:
-        datfile.write(f"{np.mean(results)}\t{np.std(results)}\n")
-
-
-def decoupledDotKern2Kern(in_seq: list) -> list:
-    out_seq = list()
-    it = 0
-    while it < len(in_seq):
-        if in_seq[it].startswith('*') or in_seq[it] == '=':
-            out_seq.append(in_seq[it])
-            it += 1
-        else:
-            new_token = ''
-            # Duration:
-            extract_duration = False
-            while not extract_duration and it < len(in_seq):
-                try:
-                    int(in_seq[it].split(".")[0])
-                    new_token = in_seq[it]
-                    extract_duration = True
-                except:
-                    pass
-                it += 1
-
-            # Pitch:
-            extract_pitch = False
-            while not extract_pitch and it < len(in_seq):
-                if list(set(in_seq[it].lower()))[0] in ['a','b','c','d','e','f','g', 'r']:
-                    new_token += in_seq[it]
-                    extract_pitch = True
-                it += 1
-
-            # Alteration:
-            if it < len(in_seq):
-                if in_seq[it] == '-' or in_seq[it] == '#':
-                    new_token += in_seq[it]
-                    it += 1
-
-                out_seq.append(new_token)
-
-    return out_seq
-
-
-
-def decoupledKern2Kern(in_seq: list) -> list:
-    out_seq = list()
-    it = 0
-    while it < len(in_seq):
-        if in_seq[it].startswith('*') or in_seq[it] == '=':
-            out_seq.append(in_seq[it])
-            it += 1
-        else:
-            new_token = ''
-            # Duration:
-            extract_duration = False
-            while not extract_duration and it < len(in_seq):
-                try:
-                    int(in_seq[it])
-                    new_token = in_seq[it]
-                    extract_duration = True
-                except:
-                    pass
-                it += 1
-
-            extract_dot = False
-            while not extract_dot and it < len(in_seq):
-                if in_seq[it] == '.':
-                    new_token += '.'
-                    it += 1
-                elif list(set(in_seq[it].lower()))[0] in ['a','b','c','d','e','f','g', 'r']:
-                    extract_dot = True
-                else:
-                    it += 1
-
-            # Pitch:
-            extract_pitch = False
-            while not extract_pitch and it < len(in_seq):
-                if list(set(in_seq[it].lower()))[0] in ['a','b','c','d','e','f','g', 'r']:
-                    new_token += in_seq[it]
-                    extract_pitch = True
-                it += 1
-
-            # Alteration:
-            if it < len(in_seq):
-                if in_seq[it] == '-' or in_seq[it] == '#':
-                    new_token += in_seq[it]
-                    it += 1
-
-            if extract_pitch: out_seq.append(new_token)
-
-    return out_seq
-
-
-
-def compute_MV2H(y_true: list, y_pred: list, encoding: str, aux_name: str):
-
-    MV2H_global = MV2H(multi_pitch = 0, voice = 0, meter = 0, harmony = 0, note_value = 0)
-    y_true_all = list()
-    y_pred_all = list()
-    for it in range(len(y_true)):
-        # Converting to MIDI:
-        ### True:
-        if encoding == 'kern':
-            y_true_krn = y_true[it]
-        elif encoding == 'decoupled_dot':
-            y_true_krn = decoupledDotKern2Kern(y_true[it])
-        elif encoding == 'decoupled':
-            y_true_krn = decoupledKern2Kern(y_true[it])
-        y_true_all.append(y_true_krn.copy())
-        y_true_krn.insert(0, '**kern')
-        with open(aux_name + '.krn','w') as fout:
-            for u in y_true_krn: fout.write(u + '\n')
-        a = converterm21.parse(aux_name + '.krn').write('midi')
-        reference_midi_file = a.name
-        shutil.copyfile(a, reference_midi_file)
-        os.remove(aux_name + '.krn')
-
-        ### Pred:
-        if encoding == 'kern':
-            y_pred_krn = y_pred[it]
-        elif encoding == 'decoupled_dot':
-            y_pred_krn = decoupledDotKern2Kern(y_pred[it])
-        elif encoding == 'decoupled':
-            y_pred_krn = decoupledKern2Kern(y_pred[it])
-        y_pred_all.append(y_pred_krn.copy())
-        y_pred_krn.insert(0, '**kern')
-        with open(aux_name + '.krn','w') as fout:
-            for u in y_pred_krn: fout.write(u + '\n')
-        a = converterm21.parse(aux_name + '.krn').write('midi')
-        predicted_midi_file = a.name
-        shutil.copyfile(a, predicted_midi_file)
-        os.remove(aux_name + '.krn')
+def compute_mv2h(y_true: List[List[str]], y_pred: List[List[str]], encoding: str, aux_name: str) -> dict:
+    def kern2txt(kern: List[str], encoding: str, aux_name: str) -> Tuple[List[str], str]:
+        # ------------------------------- MIDI:
         
-        # Converting to TXT:
-        ### True:
-        reference_txt_file = reference_midi_file.replace('mid', 'txt')
-        converter = Converter(file=reference_midi_file, output=reference_txt_file)
+        if encoding == "decoupled":
+            kern = decoupledKern2Kern(kern)
+        elif encoding == "decoupled_dot":
+            kern = decoupledDotKern2Kern(kern)
+
+        midi = kern.copy()
+        midi.insert(0, "**kern")
+        midi = "\n".join(midi)
+        with open(aux_name + ".krn", "w") as fout:
+            fout.write(midi)
+        midi = converterm21.parse(aux_name + ".krn").write("midi")
+        midi_file = midi.name
+        
+        shutil.copyfile(midi, midi_file)
+        os.remove(aux_name + ".krn")
+
+        # ------------------------------- TXT:
+        txt_file = midi_file.replace("mid", "txt")
+        converter = Converter(file=midi_file, output=txt_file)
         converter.convert_file()
-        with open(reference_txt_file,'r') as fin:
-            f = [u.replace(".0", "") for u in fin.readlines()]
-        with open(reference_txt_file,'w') as fout:
-            for u in f: fout.write(u)
-        os.remove(reference_midi_file)
 
-        ### Pred:
-        predicted_txt_file = predicted_midi_file.replace('mid', 'txt')
-        converter = Converter(file=predicted_midi_file, output=predicted_txt_file)
-        converter.convert_file()
-        with open(predicted_txt_file,'r') as fin:
-            f = [u.replace(".0", "") for u in fin.readlines()]
-        with open(predicted_txt_file,'w') as fout:
-            for u in f: fout.write(u)
-        os.remove(predicted_midi_file)
+        with open(txt_file, "r") as fin:
+            f = fin.read().replace(".0", "")
+        with open(txt_file, "w") as fout:
+            fout.write(f)
 
-        # Figures of merit:
-        reference_file = Music.from_file(reference_txt_file)
-        transcription_file = Music.from_file(predicted_txt_file)
+        os.remove(midi_file)
 
-        res_dict = MV2H(multi_pitch = 0, voice = 0, meter = 0, harmony = 0, note_value = 0)
+        return kern, txt_file
+
+    mv2h_total = MV2H(multi_pitch=0, voice=0, meter=0, harmony=0, note_value=0)
+    
+    krn_y_true = []
+    krn_y_pred = []
+    for t, h in zip(y_true, y_pred):
+        t_krn, t_txt_file = kern2txt(kern=t, encoding=encoding, aux_name=aux_name + "_true")
+        h_krn, h_txt_file = kern2txt(kern=h, encoding=encoding, aux_name=aux_name + "_pred")
+
+        # Append to the list of kerns:
+        krn_y_true.append(t_krn)
+        krn_y_pred.append(h_krn)
+    
+        # MV2H:
+        t_file = Music.from_file(t_txt_file)
+        h_file = Music.from_file(h_txt_file)
+        
+        res_dict = MV2H(multi_pitch=0, voice=0, meter=0, harmony=0, note_value=0)
         try:
-            res_dict = mv2h(reference_file, transcription_file)
-            MV2H_global.__multi_pitch__  += res_dict.multi_pitch
-            MV2H_global.__voice__ += res_dict.voice
-            MV2H_global.__meter__ += res_dict.meter
-            MV2H_global.__harmony__ += res_dict.harmony
-            MV2H_global.__note_value__ += res_dict.note_value
+            res_dict = mv2h(t_file, h_file)
+            mv2h_total.__multi_pitch__  += res_dict.multi_pitch
+            mv2h_total.__voice__ += res_dict.voice
+            mv2h_total.__meter__ += res_dict.meter
+            mv2h_total.__harmony__ += res_dict.harmony
+            mv2h_total.__note_value__ += res_dict.note_value
         except:
             pass
-        os.remove(reference_txt_file)
-        os.remove(predicted_txt_file)
+        os.remove(t_txt_file)
+        os.remove(h_txt_file)
 
-    MV2H_global.__multi_pitch__  /= len(y_true)
-    MV2H_global.__voice__ /= len(y_true)
-    MV2H_global.__meter__ /= len(y_true)
-    MV2H_global.__harmony__ /= len(y_true)
-    MV2H_global.__note_value__ /= len(y_true)
+    mv2h_total.__multi_pitch__  /= len(y_true)
+    mv2h_total.__voice__ /= len(y_true)
+    mv2h_total.__meter__ /= len(y_true)
+    mv2h_total.__harmony__ /= len(y_true)
+    mv2h_total.__note_value__ /= len(y_true)
 
-    # Computer SER for the obtained kern after the transducer:
-    ser = compute_ser(y_true_all, y_pred_all)
+    mv2h_final_value = (mv2h_total.multi_pitch + mv2h_total.voice + mv2h_total.meter + mv2h_total.harmony + mv2h_total.note_value) / 5
+    mv2h_final_value *= 100
 
-    return MV2H_global, ser
+    # SER for the obtained kerns after the transducer:
+    recon_ser = compute_ser(krn_y_true, krn_y_pred)
 
+    return {"mv2h": mv2h_final_value, "recon_ser": recon_ser}
 
+# --------- OTHERS --------- #
 
-if __name__ == '__main__':
-    Y = [['*clefG2','*k[b-]','*M6/8','*MM120','=','4.','f','4.','b','-','=','4.','g','4.','b','-','=','8','e','8','g','8','b','-','8','f','8','a','8','b','-','=','4.','cc','4','dd','8','ee','=','4','b','-','8','dd','4','cc','8','bb','-','=','8','ccc','8','bb','-','8','aa','4.','dd','=','8','r','8','dd','8','r','8','dd','8','r','8','dd','=','8','r','8','ee','8','r','8','ee','8','r','8','ee','=','2.','ccc','='],\
-    ['*clefG2','*k[b-e-a-d-g-c-f-]','*M6/8','*MM90','=','4.','aa','-','4.','fff','-','=','4.','ccc','-','4.','gg','-','=','4','cc','-','8','ee','-','4','gg','-','8','bb','-','=','4.','ccc','-','4','ddd','-','8','gg','-','=','8','ccc','-','8','bb','-','8','aa','-','8','gg','-','8','ff','-','8','ee','-','=','8','aa','-','8','gg','-','8','ff','-','4.','bb','-','=','8','ccc','-','8','eee','-','8','aa','-','8','gg','-','8','aa','-','8','bb','-','=','4.','ccc','-','4.','aa','-','=','2.','ddd','-','=']]
-    YPRED = [[], []]
-    MV2H_res, ser = compute_MV2H(Y, YPRED, 'decoupled_dot', 'prueba')
-    
-    print("hello")
+def str2bool(v: str) -> bool:
+    if v == "True":
+        return True
+    return False
+
+if __name__ == "__main__":
+    examples = {
+        "kern":
+            {
+                "y_true": [['*clefG2', '*k[b-]', '*M6/8', '*MM90', '=', '4.dd', '4.bb-', '=', '4.ff', '4.cc', '=', '4f', '8a', '4cc', '8ee', '=', '4.ff', '4gg', '8cc', '=', '8ff', '8ee', '8dd', '8cc', '8b-', '8a', '=', '8dd', '8cc', '8b-', '4.ee', '=', '8ff', '8aa', '8dd', '8cc', '8dd', '8ee', '=', '4.ff', '4.dd', '=', '2.gg', '=']],
+                "y_pred": [['*clefG2', '*k[b-e-a-]', '*M6/8', '*MM90', '=', '4.dd', '4.bb-', '4ff', '4.cc', '8f', '8a', '8cc', '8ee', '=', '4.ff', '8gg', '=', '8cc', '8ff', '8ee', '8dd', '8cc', '8b-', '8a', '8dd', '8cc', '8b-', '=', '4.ee', '=', '8ff', '8aa', '8dd', '8cc', '8dd', '8ee', '=', '4.ff', '4dd', '2gg', '=']]
+            },
+        "decoupled":
+            {
+                "y_true": [['*clefG2', '*k[]', '*M3/4', '*MM80', '=', '2', '.', 'ff', '=', '4', 'ff', '4', 'ff', '4', 'ff', '=', '8', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '=', '2', '.', 'ff', '=']],
+                "y_pred": [['*clefG2', '*k[]', '*M3/4', '*MM80', '=', '2', 'ff', '4', 'ff', '4', 'ff', '4', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '8', 'ff', '=', '2', 'ff', '=']]
+            },
+        "decoupled_dot":
+            {
+                "y_true": [['*clefG2', '*k[b-e-]', '*M3/4', '*MM85', '=', '4.', 'bb', '-', '8', 'ddd', '16', 'eee', '-', '8', 'ccc', '16', 'aa', '=', '4', 'gg', '16', 'gg', '16', 'aa', '16', 'ff', '16', 'cc', '8', 'cc', '8', 'dd', '=', '4', 'r', '8', 'ee', '-', '8', 'gg', '4', 'r', '=', '8', 'ff', '8', 'aa', '4', 'r', '4', 'gg', '=', '8.', 'ccc', '16', 'ddd', '2', 'aa', '=']],
+                "y_pred": [['*clefG2', '*k[b-e-a-d-g-]', '*M3/4', '*MM120', '=', '4.', 'bb', '-', '16', 'ddd', '16', 'eee', '-', '=', '16', 'ccc', '16', 'aa', '4', 'gg', '16', 'gg', '16', 'aa', '16', 'ff', '16', 'cc', '8', 'cc', '8', 'dd', '4', 'r', '8', 'ee', '-', '8', 'gg', '4', 'r', '8', 'ff', '8', 'aa', '4', 'r', '=', '4', 'gg', '8', 'ccc', '16', 'ddd', '=', '2.', 'aa', '=']]
+            }
+    }
+
+    for encoding in examples.keys():
+        print("Encoding: ", encoding)
+        y_true = examples[encoding]["y_true"]
+        y_pred = examples[encoding]["y_pred"]
+
+        metrics = compute_metrics(y_true, y_pred, encoding=encoding, aux_name="test")
+        print("MV2H: ", metrics["mv2h"])
+        print("SER: ", metrics["ser"])
+        print("Recon-SER: ", metrics["recon_ser"])
