@@ -1,5 +1,7 @@
 # End-to-end audio-to-score transcription with real recordings
 
+![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=flat&logo=PyTorch&logoColor=white) [![License](https://img.shields.io/static/v1?label=License&message=MIT&color=blue)]() 
+
 Code for the paper:<br />
   > Juan C. Martínez-Sevilla, **María Alfaro-Contreras**, Jose J. Valero-Mas, Jorge Calvo-Zaragoza<br />
   *[Insights into end-to-end audio-to-score transcription with real recordings: A case study with saxophone works]()*<br />
