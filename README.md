@@ -4,7 +4,7 @@
 
 Code for the paper:<br />
   > Juan C. Martínez-Sevilla, **María Alfaro-Contreras**, Jose J. Valero-Mas, Jorge Calvo-Zaragoza<br />
-  *[Insights into end-to-end audio-to-score transcription with real recordings: A case study with saxophone works]()*<br />
+  *[Insights into end-to-end audio-to-score transcription with real recordings: A case study with saxophone works](https://www.isca-speech.org/archive/interspeech_2023/martinezsevilla23_interspeech.html)*<br />
   24th INTERSPEECH Conference, August 20th-24th 2023
   
 
