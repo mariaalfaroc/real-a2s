@@ -12,7 +12,7 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 import config
-from my_utils.utils import str2bool
+from my_utils.metrics import str2bool
 from network.model import CTCTrainedCRNN
 from my_utils.encoding_convertions import ENCODING_OPTIONS
 from my_utils.data import (
