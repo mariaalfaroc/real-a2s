@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from data import IMG_HEIGHT, NUM_CHANNELS
+from my_utils.data import IMG_HEIGHT, NUM_CHANNELS
 
 
 class CNN(nn.Module):

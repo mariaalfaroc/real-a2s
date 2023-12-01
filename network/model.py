@@ -10,9 +10,9 @@ import torch.nn as nn
 from torchinfo import summary
 from madmom.audio.spectrogram import LogarithmicFilteredSpectrogram
 
-from modules import CRNN
-from data import preprocess_audio, preprocess_label, IMG_HEIGHT, NUM_CHANNELS
-from utils import ctc_greedy_decoder, compute_metrics
+from network.modules import CRNN
+from my_utils.data import preprocess_audio, preprocess_label, IMG_HEIGHT, NUM_CHANNELS
+from my_utils.utils import ctc_greedy_decoder, compute_metrics
 
 
 class CTCTrainedCRNN:

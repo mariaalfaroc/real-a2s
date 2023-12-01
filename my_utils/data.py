@@ -12,7 +12,7 @@ from madmom.audio.spectrogram import (
 )
 
 import config
-from encoding_convertions import krnConverter
+from my_utils.encoding_convertions import krnConverter
 
 # joblib settings!
 memory = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=1)

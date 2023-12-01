@@ -9,7 +9,7 @@ from pyMV2H.utils.music import Music
 from music21 import converter as converterm21
 from pyMV2H.converter.midi_converter import MidiConverter as Converter
 
-from encoding_convertions import decoupledDotKern2Kern, decoupledKern2Kern
+from my_utils.encoding_convertions import decoupledDotKern2Kern, decoupledKern2Kern
 
 
 def ctc_greedy_decoder(

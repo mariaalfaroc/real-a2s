@@ -12,10 +12,10 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 import config
-from utils import str2bool
-from model import CTCTrainedCRNN
-from encoding_convertions import ENCODING_OPTIONS
-from data import (
+from my_utils.utils import str2bool
+from network.model import CTCTrainedCRNN
+from my_utils.encoding_convertions import ENCODING_OPTIONS
+from my_utils.data import (
     train_data_generator,
     load_data_from_files,
     check_and_retrieveVocabulary_from_files,
