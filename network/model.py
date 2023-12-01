@@ -1,7 +1,7 @@
 import time
 import random
 import pathlib
-from typing import Tuple, Generator, List
+from typing import List, Dict, Tuple, Generator
 
 import torch
 import numpy as np
@@ -17,7 +17,10 @@ from my_utils.utils import ctc_greedy_decoder, compute_metrics
 
 class CTCTrainedCRNN:
     def __init__(
-        self, dictionaries: Tuple[dict, dict], encoding: str, device: torch.device
+        self,
+        dictionaries: Tuple[Dict[str, int], Dict[int, str]],
+        encoding: str,
+        device: torch.device,
     ) -> None:
         super(CTCTrainedCRNN, self).__init__()
         self.w2i, self.i2w = dictionaries
@@ -55,7 +58,7 @@ class CTCTrainedCRNN:
 
     def on_train_begin(self, patience: int) -> None:
         self.logs = {"loss": [], "val_ser": [], "val_mv2h": [], "val_recon_ser": []}
-        self.best_val_ser = float("Inf")
+        self.best_val_ser = float("inf")
         self.best_epoch = 0
         self.patience = patience
 
@@ -204,7 +207,7 @@ class CTCTrainedCRNN:
         aux_name: str,
         print_metrics: bool = True,
         print_random_samples: bool = False,
-    ) -> dict:
+    ) -> Dict[str, float]:
         YPRED = []
 
         with torch.no_grad():
@@ -250,11 +253,3 @@ class CTCTrainedCRNN:
                 self.logs[k] = ["-"] * len(self.logs["loss"][:-1]) + [self.logs[k]]
         df_logs = pd.DataFrame.from_dict(self.logs)
         df_logs.to_csv(path, index=False)
-
-
-if __name__ == "__main__":
-    torch.cuda.empty_cache()
-
-    model = CTCTrainedCRNN(
-        dictionaries=({}, {}), encoding="kern", device=torch.device("cuda")
-    )
