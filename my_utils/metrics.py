@@ -13,7 +13,7 @@ from my_utils.encoding_convertions import decoupledDotKern2Kern, decoupledKern2K
 
 
 def ctc_greedy_decoder(
-    y_pred: torch.Tensor, xl: List[int], i2w: dict
+    y_pred: torch.Tensor, xl: List[int], i2w: Dict[int, str]
 ) -> List[List[str]]:
     y_pred_decoded = []
     for s, l in zip(y_pred, xl):
@@ -34,11 +34,11 @@ def ctc_greedy_decoder(
 def compute_metrics(
     y_true: List[List[str]], y_pred: List[List[str]], encoding: str, aux_name: str
 ) -> Dict[str, float]:
-    # ------------------------------- SER:
+    # ------------------------------- SER
     ser = compute_ser(y_true, y_pred)
-    # ------------------------------- MV2H:
+    # ------------------------------- MV2H
     mv2h_dict = compute_mv2h(y_true, y_pred, encoding, aux_name)
-    # ------------------------------- COMBINE:
+    # ------------------------------- COMBINE
     metrics = {"ser": ser, **mv2h_dict}
     return metrics
 
@@ -74,11 +74,11 @@ def compute_ser(y_true: List[List[str]], y_pred: List[List[str]]) -> float:
 
 def compute_mv2h(
     y_true: List[List[str]], y_pred: List[List[str]], encoding: str, aux_name: str
-) -> dict:
+) -> Dict[str, float]:
     def kern2txt(
         kern: List[str], encoding: str, aux_name: str
     ) -> Tuple[List[str], str]:
-        # ------------------------------- MIDI:
+        # ------------------------------- MIDI
 
         if encoding == "decoupled":
             kern = decoupledKern2Kern(kern)
@@ -96,7 +96,7 @@ def compute_mv2h(
         shutil.copyfile(midi, midi_file)
         os.remove(aux_name + ".krn")
 
-        # ------------------------------- TXT:
+        # ------------------------------- TXT
         txt_file = midi_file.replace("mid", "txt")
         converter = Converter(file=midi_file, output=txt_file)
         converter.convert_file()
@@ -122,11 +122,11 @@ def compute_mv2h(
             kern=h, encoding=encoding, aux_name=aux_name + "_pred"
         )
 
-        # Append to the list of kerns:
+        # Append to the list of kerns
         krn_y_true.append(t_krn)
         krn_y_pred.append(h_krn)
 
-        # MV2H:
+        # MV2H
         t_file = Music.from_file(t_txt_file)
         h_file = Music.from_file(h_txt_file)
 
@@ -158,7 +158,7 @@ def compute_mv2h(
     ) / 5
     mv2h_final_value *= 100
 
-    # SER for the obtained kerns after the transducer:
+    # SER for the obtained kerns after the transducer
     recon_ser = compute_ser(krn_y_true, krn_y_pred)
 
     return {"mv2h": mv2h_final_value, "recon_ser": recon_ser}
