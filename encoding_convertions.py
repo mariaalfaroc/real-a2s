@@ -9,19 +9,23 @@ ENCODING_OPTIONS = ["kern", "decoupled", "decoupled_dot"]
 # If we change the dataset, MAKE SURE OF THIS!
 # The SARA dataset (JC dataset) does not contain multirests.
 
-class krnConverter():
+
+class krnConverter:
     """Main Kern converter operations class."""
+
     def __init__(self, encoding: str = "kern") -> None:
         self.reserved_words = ["clef", "k[", "*M"]
         self.comment_symbols = ["*", "!"]
 
         # Convert function
-        assert encoding in ENCODING_OPTIONS, f"You must chose one of the possible encoding options: {','.join(ENCODING_OPTIONS)}"
+        assert (
+            encoding in ENCODING_OPTIONS
+        ), f"You must chose one of the possible encoding options: {','.join(ENCODING_OPTIONS)}"
         self.encoding = encoding
         self.convert_function_options = {
             "kern": self.cleanKernFile,
             "decoupled": self.cleanAndDecoupleKernFile,
-            "decoupled_dot": self.cleanAndDecoupleDottedKernFile
+            "decoupled_dot": self.cleanAndDecoupleDottedKernFile,
         }
         self.convert_step = self.convert_function_options[self.encoding]
 
@@ -29,35 +33,39 @@ class krnConverter():
         """Convert complete kern sequence to CLEAN kern format."""
         with open(file_path) as fin:
             temp = fin.read().splitlines()
-        out_seq = [self.cleanKernToken(u) for u in temp if self.cleanKernToken(u) is not None]
+        out_seq = [
+            self.cleanKernToken(u) for u in temp if self.cleanKernToken(u) is not None
+        ]
         return out_seq
 
     def cleanKernToken(self, in_token: str) -> str:
         """Convert a kern token to its CLEAN equivalent."""
-        out_token = None                                                    # Default
+        out_token = None  # Default
 
-        if any([u in in_token for u in self.reserved_words]):               # Relevant reserved tokens
+        if any(
+            [u in in_token for u in self.reserved_words]
+        ):  # Relevant reserved tokens
             out_token = in_token
 
-        elif any([in_token.startswith(u) for u in self.comment_symbols]):   # Comments
+        elif any([in_token.startswith(u) for u in self.comment_symbols]):  # Comments
             out_token = None
 
-        elif in_token.startswith("s"):                                      # Slurs
+        elif in_token.startswith("s"):  # Slurs
             out_token = "s"
 
-        elif "=" in in_token:                                               # Bar lines
-            out_token = "="            
+        elif "=" in in_token:  # Bar lines
+            out_token = "="
 
         elif not "q" in in_token:
-            if "rr" in in_token:                                            # Multirest
+            if "rr" in in_token:  # Multirest
                 out_token = re.findall("rr[0-9]+", in_token)[0]
-            elif "r" in in_token:                                           # Rest
-                out_token = in_token.split("r")[0]+"r"
-            else:                                                           # Music note
+            elif "r" in in_token:  # Rest
+                out_token = in_token.split("r")[0] + "r"
+            else:  # Music note
                 out_token = re.findall("\d+[.]*[a-gA-G]+[n#-]*", in_token)[0]
-        
+
         return out_token
-    
+
     # ---------------------------------------------------------------------------- DECOUPLE
 
     def cleanAndDecoupleKernFile(self, file_path: str) -> List[str]:
@@ -67,29 +75,31 @@ class krnConverter():
         out_seq = [self.cleanAndDecoupleKernToken(u) for u in temp]
         out_seq = [x for xs in out_seq for x in xs if x is not None]
         return out_seq
-    
+
     def cleanAndDecoupleKernToken(self, in_token: str) -> List[str]:
         """Convert a kern token to its CLEAN and DECOUPLED equivalent."""
-        out_token = []                                                      # Default
+        out_token = []  # Default
 
-        if any([u in in_token for u in self.reserved_words]):               # Relevant reserved tokens
+        if any(
+            [u in in_token for u in self.reserved_words]
+        ):  # Relevant reserved tokens
             out_token.append(in_token)
 
-        elif any([in_token.startswith(u) for u in self.comment_symbols]):   # Comments
+        elif any([in_token.startswith(u) for u in self.comment_symbols]):  # Comments
             out_token.append(None)
 
-        elif in_token.startswith("s"):                                      # Slurs
+        elif in_token.startswith("s"):  # Slurs
             out_token.append("s")
 
-        elif "=" in in_token:                                               # Bar lines
+        elif "=" in in_token:  # Bar lines
             out_token.append("=")
 
         elif not "q" in in_token:
-            if "rr" in in_token:                                            # Multirest
+            if "rr" in in_token:  # Multirest
                 out_token.append(re.findall("rr[0-9]+", in_token)[0])
-            elif "r" in in_token:                                           # Rest
+            elif "r" in in_token:  # Rest
                 out_token = [in_token.split("r")[0], "r"]
-            else:                                                           # Notes
+            else:  # Notes
                 # Extract duration:
                 duration = re.findall("\d+", in_token)[0]
                 rest = re.split("\d+", in_token)[1]
@@ -111,13 +121,13 @@ class krnConverter():
                 alteration = None
                 alteration = re.findall("[n#-]*", rest)[0]
                 if len(alteration) == 0:
-                    alteration = None 
+                    alteration = None
                 out_token.append(alteration)
         else:
             out_token = [None]
-        
+
         return out_token
-    
+
     # ---------------------------------------------------------------------------- DECOUPLE DOTTED
 
     def cleanAndDecoupleDottedKernFile(self, file_path: str) -> List[str]:
@@ -127,29 +137,31 @@ class krnConverter():
         out_seq = [self.cleanAndDecoupleDottedKernToken(u) for u in temp]
         out_seq = [x for xs in out_seq for x in xs if x is not None]
         return out_seq
-    
+
     def cleanAndDecoupleDottedKernToken(self, in_token: str) -> List[str]:
         """Convert a kern token to its CLEAN and DECOUPLED-with-DOT equivalent."""
-        out_token = []                                                      # Default
+        out_token = []  # Default
 
-        if any([u in in_token for u in self.reserved_words]):               # Relevant reserved tokens
+        if any(
+            [u in in_token for u in self.reserved_words]
+        ):  # Relevant reserved tokens
             out_token.append(in_token)
 
-        elif any([in_token.startswith(u) for u in self.comment_symbols]):   # Comments
+        elif any([in_token.startswith(u) for u in self.comment_symbols]):  # Comments
             out_token.append(None)
 
-        elif in_token.startswith("s"):                                      # Slurs
+        elif in_token.startswith("s"):  # Slurs
             out_token.append("s")
 
-        elif "=" in in_token:                                               # Bar lines
+        elif "=" in in_token:  # Bar lines
             out_token.append("=")
 
         elif not "q" in in_token:
-            if "rr" in in_token:                                            # Multirest
+            if "rr" in in_token:  # Multirest
                 out_token.append(re.findall("rr[0-9]+", in_token)[0])
-            elif "r" in in_token: # Rest
+            elif "r" in in_token:  # Rest
                 out_token = [in_token.split("r")[0], "r"]
-            else:                                                           # Notes
+            else:  # Notes
                 # Extract duration:
                 duration = re.findall("\d+", in_token)[0]
                 rest = re.split("\d+", in_token)[1]
@@ -170,24 +182,26 @@ class krnConverter():
                 alteration = None
                 alteration = re.findall("[n#-]*", rest)[0]
                 if len(alteration) == 0:
-                    alteration = None 
+                    alteration = None
                 out_token.append(alteration)
         else:
             out_token = [None]
-        
+
         return out_token
 
     # ---------------------------------------------------------------------------- CONVERT CALL
-    
+
     def convert(self, src_file: str) -> List[str]:
         out = self.convert_step(src_file)
         return out
 
+
 ####################################################################################################
+
 
 def decoupledDotKern2Kern(in_seq: List[str]) -> List[str]:
     out_seq = []
-    
+
     it = 0
     while it < len(in_seq):
         if in_seq[it].startswith("*") or in_seq[it] == "=":
@@ -195,7 +209,7 @@ def decoupledDotKern2Kern(in_seq: List[str]) -> List[str]:
             it += 1
         else:
             new_token = ""
-            
+
             # Duration:
             extract_duration = False
             while not extract_duration and it < len(in_seq):
@@ -210,7 +224,16 @@ def decoupledDotKern2Kern(in_seq: List[str]) -> List[str]:
             # Pitch:
             extract_pitch = False
             while not extract_pitch and it < len(in_seq):
-                if list(set(in_seq[it].lower()))[0] in ["a", "b", "c", "d", "e", "f", "g", "r"]:
+                if list(set(in_seq[it].lower()))[0] in [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e",
+                    "f",
+                    "g",
+                    "r",
+                ]:
                     new_token += in_seq[it]
                     extract_pitch = True
                 it += 1
@@ -225,9 +248,10 @@ def decoupledDotKern2Kern(in_seq: List[str]) -> List[str]:
 
     return out_seq
 
+
 def decoupledKern2Kern(in_seq: List[str]) -> List[str]:
-    out_seq =[]
-    
+    out_seq = []
+
     it = 0
     while it < len(in_seq):
         if in_seq[it].startswith("*") or in_seq[it] == "=":
@@ -252,7 +276,16 @@ def decoupledKern2Kern(in_seq: List[str]) -> List[str]:
                 if in_seq[it] == ".":
                     new_token += "."
                     it += 1
-                elif list(set(in_seq[it].lower()))[0] in ["a", "b", "c", "d", "e", "f", "g", "r"]:
+                elif list(set(in_seq[it].lower()))[0] in [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e",
+                    "f",
+                    "g",
+                    "r",
+                ]:
                     extract_dot = True
                 else:
                     it += 1
@@ -260,7 +293,16 @@ def decoupledKern2Kern(in_seq: List[str]) -> List[str]:
             # Pitch:
             extract_pitch = False
             while not extract_pitch and it < len(in_seq):
-                if list(set(in_seq[it].lower()))[0] in ["a", "b", "c", "d", "e", "f", "g", "r"]:
+                if list(set(in_seq[it].lower()))[0] in [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e",
+                    "f",
+                    "g",
+                    "r",
+                ]:
                     new_token += in_seq[it]
                     extract_pitch = True
                 it += 1
@@ -274,6 +316,7 @@ def decoupledKern2Kern(in_seq: List[str]) -> List[str]:
                 out_seq.append(new_token)
 
     return out_seq
+
 
 if __name__ == "__main__":
     import os
@@ -294,21 +337,25 @@ if __name__ == "__main__":
     for f in os.listdir("ICASSP-Data/krn_tenor_sax_transposed"):
         if f.endswith(".krn") and not f.startswith("."):
             f = os.path.join("ICASSP-Data/krn_tenor_sax_transposed", f)
-            
+
             krn = krnParser.convert(src_file=f)
             krn_dec = krnParser_dec.convert(src_file=f)
             krn_decDot = krnParser_decDot.convert(src_file=f)
             print("krn", krn)
             print("krn_decoupled", krn_dec)
             print("krn_decoupled_dot", krn_decDot)
-            
+
             print("Going backwards...")
             krn_from_dec = decoupledKern2Kern(krn_dec)
             krn_from_decDot = decoupledDotKern2Kern(krn_decDot)
             print("krn", krn)
             print("krn_from_dec", krn_from_dec)
-            assert "\n".join(krn) == "\n".join(krn_from_dec), "Error in conversion! (decoupled)"
+            assert "\n".join(krn) == "\n".join(
+                krn_from_dec
+            ), "Error in conversion! (decoupled)"
             print("krn_from_decDot", krn_from_decDot)
-            assert "\n".join(krn) == "\n".join(krn_from_decDot), "Error in conversion! (decoupled_dot)"
-            
+            assert "\n".join(krn) == "\n".join(
+                krn_from_decDot
+            ), "Error in conversion! (decoupled_dot)"
+
             print("--------------------------------")

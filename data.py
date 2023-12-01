@@ -6,7 +6,10 @@ import torch
 import joblib
 import numpy as np
 from sklearn.utils import shuffle
-from madmom.audio.spectrogram import LogarithmicFilterbank, LogarithmicFilteredSpectrogram
+from madmom.audio.spectrogram import (
+    LogarithmicFilterbank,
+    LogarithmicFilteredSpectrogram,
+)
 
 import config
 from encoding_convertions import krnConverter
@@ -15,15 +18,16 @@ from encoding_convertions import krnConverter
 memory = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=1)
 
 NUM_CHANNELS = 1
-IMG_HEIGHT = NUM_BINS = 229 
+IMG_HEIGHT = NUM_BINS = 229
 
 # ---------- DATA LOADING ---------- #
+
 
 def filter_multirest(YFiles: List[str]) -> List[str]:
     YFiles_filetered = YFiles.copy()
 
     for y in YFiles:
-        data =  open(y, "r").read()
+        data = open(y, "r").read()
         if data.count("multirest") > 0:
             YFiles_filetered.remove(y)
 
@@ -31,12 +35,15 @@ def filter_multirest(YFiles: List[str]) -> List[str]:
 
     return YFiles_filetered
 
-def filter_multirest_two_lists(XFiles: List[str], YFiles: List[str]) -> Tuple[List[str], List[str]]:
+
+def filter_multirest_two_lists(
+    XFiles: List[str], YFiles: List[str]
+) -> Tuple[List[str], List[str]]:
     YFiles_filetered = YFiles.copy()
     XFiles_filetered = XFiles.copy()
 
     for it in range(len(YFiles)):
-        data =  open(YFiles[it], "r").read()
+        data = open(YFiles[it], "r").read()
         if data.count("multirest") > 0:
             YFiles_filetered.remove(YFiles[it])
             XFiles_filetered.remove(XFiles[it])
@@ -45,18 +52,28 @@ def filter_multirest_two_lists(XFiles: List[str], YFiles: List[str]) -> Tuple[Li
 
     return XFiles_filetered, YFiles_filetered
 
+
 def load_data_from_files(
     *args: Tuple[pathlib.PosixPath, pathlib.PosixPath, pathlib.PosixPath, bool]
-) -> Tuple[List[str], List[str], List[str], List[str], List[str], List[str], List[str], List[str]]:
+) -> Tuple[
+    List[str],
+    List[str],
+    List[str],
+    List[str],
+    List[str],
+    List[str],
+    List[str],
+    List[str],
+]:
     train_path, val_path, test_path, use_multirest = args
 
     # Loading train:
     with open(train_path) as f:
         in_file = f.read().splitlines()
-    XTrain  = [u.split()[0] for u in in_file if not u.startswith("*")]
-    YTrain  = [u.split()[1] for u in in_file if not u.startswith("*")]
-    XTrain_FT  = [u.split()[0].split("*")[1] for u in in_file if u.startswith("*")]
-    YTrain_FT  = [u.split()[1] for u in in_file if u.startswith("*")]
+    XTrain = [u.split()[0] for u in in_file if not u.startswith("*")]
+    YTrain = [u.split()[1] for u in in_file if not u.startswith("*")]
+    XTrain_FT = [u.split()[0].split("*")[1] for u in in_file if u.startswith("*")]
+    YTrain_FT = [u.split()[1] for u in in_file if u.startswith("*")]
     if not use_multirest:
         XTrain, YTrain = filter_multirest_two_lists(XTrain, YTrain)
         XTrain_FT, YTrain_FT = filter_multirest_two_lists(XTrain_FT, YTrain_FT)
@@ -64,44 +81,46 @@ def load_data_from_files(
     # Loading validation:
     with open(val_path) as f:
         in_file = f.read().splitlines()
-    XVal  = [u.split()[0] for u in in_file]
-    YVal  = [u.split()[1] for u in in_file]
+    XVal = [u.split()[0] for u in in_file]
+    YVal = [u.split()[1] for u in in_file]
     if not use_multirest:
         XVal, YVal = filter_multirest_two_lists(XVal, YVal)
 
     # Loading test:
     with open(test_path) as f:
         in_file = f.read().splitlines()
-    XTest  = [u.split()[0] for u in in_file]
-    YTest  = [u.split()[1] for u in in_file]
+    XTest = [u.split()[0] for u in in_file]
+    YTest = [u.split()[1] for u in in_file]
     if not use_multirest:
         XTest, YTest = filter_multirest_two_lists(XTest, YTest)
 
     return XTrain, YTrain, XVal, YVal, XTest, YTest, XTrain_FT, YTrain_FT
 
+
 def get_spectrogram_from_file(audiofilename: str) -> LogarithmicFilteredSpectrogram:
-	audio_options = dict(
-		num_channels=NUM_CHANNELS,
-		sample_rate=44100,
-		filterbank=LogarithmicFilterbank,
-		frame_size=4096,
-		fft_size=4096,
-		hop_size=441 * 2,  # 25 fps -> 441 * 4 ; 50 fps -> 441 * 2
-		num_bands=48,
-		fmin=30,
-		fmax=8000.0,
-		fref=440.0,
-		norm_filters=True,
-		unique_filters=True,
-		circular_shift=False,
-		norm=True
-	)
-	x = LogarithmicFilteredSpectrogram(audiofilename, **audio_options)
+    audio_options = dict(
+        num_channels=NUM_CHANNELS,
+        sample_rate=44100,
+        filterbank=LogarithmicFilterbank,
+        frame_size=4096,
+        fft_size=4096,
+        hop_size=441 * 2,  # 25 fps -> 441 * 4 ; 50 fps -> 441 * 2
+        num_bands=48,
+        fmin=30,
+        fmax=8000.0,
+        fref=440.0,
+        norm_filters=True,
+        unique_filters=True,
+        circular_shift=False,
+        norm=True,
+    )
+    x = LogarithmicFilteredSpectrogram(audiofilename, **audio_options)
     #               width     height
     # x.shape = [num_frames, num_bins]
     # num_frames will vary from file to file because of the audio duration
     # num_bins will be the same for all files
-	return x
+    return x
+
 
 # ---------- TRANSCRIPTION UTILS ---------- #
 def check_and_retrieveVocabulary_from_files(
@@ -111,7 +130,7 @@ def check_and_retrieveVocabulary_from_files(
     YTrain: List[str],
     YVal: List[str],
     YTest: List[str],
-    YTrain_FT: List[str]
+    YTrain_FT: List[str],
 ) -> Tuple[dict, dict]:
     YFiles = YTrain.copy()
     YFiles.extend(YVal)
@@ -134,10 +153,9 @@ def check_and_retrieveVocabulary_from_files(
 
     return w2i, i2w
 
+
 def make_vocabulary(
-    nameOfVoc: str,
-    YFiles: List[str],
-    encoding: str
+    nameOfVoc: str, YFiles: List[str], encoding: str
 ) -> Tuple[dict, dict]:
     w2ipath = config.vocab_dir / f"{nameOfVoc}w2i.npy"
     i2wpath = config.vocab_dir / f"{nameOfVoc}i2w.npy"
@@ -146,7 +164,7 @@ def make_vocabulary(
 
     # Create vocabulary
     vocabulary = []
-    for yf in YFiles: 
+    for yf in YFiles:
         vocabulary.extend(krnParser.convert(yf))
     vocabulary = sorted(set(vocabulary))
 
@@ -164,22 +182,21 @@ def make_vocabulary(
 
     return w2i, i2w
 
+
 def preprocess_audio(path: str, width_reduction: int) -> Tuple[np.ndarray, int]:
     x = get_spectrogram_from_file(path)
-        # [num_frames, num_bins] == [width, height]
+    # [num_frames, num_bins] == [width, height]
     x = np.transpose(x)
-        # [height, width]
-    x = np.flip(x, 0)   # Because of the ordering of the bins: from 0 Hz to max_freq Hz
+    # [height, width]
+    x = np.flip(x, 0)  # Because of the ordering of the bins: from 0 Hz to max_freq Hz
     x = (x - np.amin(x)) / (np.amax(x) - np.amin(x))
     x = np.expand_dims(x, 0)
-        # [1, height, width]
+    # [1, height, width]
     return x, x.shape[2] // width_reduction
 
+
 def preprocess_label(
-    path: str,
-    training: bool,
-    w2i: dict,
-    encoding: str
+    path: str, training: bool, w2i: dict, encoding: str
 ) -> Union[Tuple[List[int], int], List[str]]:
     krnParser = krnConverter(encoding=encoding)
     y = krnParser.convert(path)
@@ -188,20 +205,30 @@ def preprocess_label(
         return y, len(y)
     return y
 
+
 def ctc_preprocess(
     x: List[LogarithmicFilteredSpectrogram],
     xl: List[int],
     y: List[List[int]],
     yl: List[int],
-    pad_index: int
+    pad_index: int,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     # Zero-pad audios to maximum batch audio width
     max_width = max(x, key=np.shape).shape[2]
-    x = np.array([np.pad(i, pad_width=((0, 0), (0, 0), (0, max_width - i.shape[2]))) for i in x], dtype=np.float32)
+    x = np.array(
+        [np.pad(i, pad_width=((0, 0), (0, 0), (0, max_width - i.shape[2]))) for i in x],
+        dtype=np.float32,
+    )
     # Zero-pad labels to maximum batch label length
     max_length = len(max(y, key=len))
     y = np.array([i + [pad_index] * (max_length - len(i)) for i in y], dtype=np.int32)
-    return torch.from_numpy(x), torch.tensor(xl, dtype=torch.int32), torch.from_numpy(y), torch.tensor(yl, dtype=torch.int32)
+    return (
+        torch.from_numpy(x),
+        torch.tensor(xl, dtype=torch.int32),
+        torch.from_numpy(y),
+        torch.tensor(yl, dtype=torch.int32),
+    )
+
 
 def train_data_generator(
     *,
@@ -211,20 +238,36 @@ def train_data_generator(
     width_reduction: int,
     w2i: dict,
     device: torch.device,
-    encoding: str
-) -> Generator[Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None]:  # Generator[yield_type, send_type, return_type]
+    encoding: str,
+) -> Generator[
+    Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None
+]:  # Generator[yield_type, send_type, return_type]
     # Load all data in RAM
     X, XL = map(list, zip(*[preprocess_audio(xf, width_reduction) for xf in XFiles]))
-    Y, YL = map(list, zip(*[preprocess_label(yf, training=True, w2i=w2i, encoding=encoding) for yf in YFiles]))
+    Y, YL = map(
+        list,
+        zip(
+            *[
+                preprocess_label(yf, training=True, w2i=w2i, encoding=encoding)
+                for yf in YFiles
+            ]
+        ),
+    )
 
     index = 0
     while True:
-        x, xl, y, yl = X[index:index + batch_size], XL[index:index + batch_size], Y[index:index + batch_size], YL[index:index + batch_size]
+        x, xl, y, yl = (
+            X[index : index + batch_size],
+            XL[index : index + batch_size],
+            Y[index : index + batch_size],
+            YL[index : index + batch_size],
+        )
         x, xl, y, yl = ctc_preprocess(x, xl, y, yl, pad_index=w2i["<pad>"])
         yield x.to(device), xl.to(device), y.to(device), yl.to(device)
         index = (index + batch_size) % len(X)
         if index == 0:
             X, XL, Y, YL = shuffle(X, XL, Y, YL, random_state=42)
+
 
 if __name__ == "__main__":
     from torchvision.utils import make_grid, save_image
@@ -232,7 +275,7 @@ if __name__ == "__main__":
     CHECK_DIR = "CHECK"
 
     os.makedirs(CHECK_DIR, exist_ok=True)
-    
+
     use_multirest = False
     encoding = "kern"
 
@@ -244,21 +287,42 @@ if __name__ == "__main__":
     nameOfVoc = nameOfVoc + "_woutmultirest" if not use_multirest else nameOfVoc
 
     config.set_source_data_dirs()
-    XFTrain, YFTrain, XFVal, YFVal, XFTest, YFTest, XTrain_FT, YTrain_FT = load_data_from_files(config.cases_dir / train,\
-        config.cases_dir / val, config.cases_dir / test, use_multirest)
-    w2i, i2w = check_and_retrieveVocabulary_from_files(nameOfVoc=nameOfVoc, use_multirest=use_multirest, encoding=encoding,\
-        YTrain=YFTrain, YVal=YFVal, YTest=YFTest, YTrain_FT=YTrain_FT)
+    (
+        XFTrain,
+        YFTrain,
+        XFVal,
+        YFVal,
+        XFTest,
+        YFTest,
+        XTrain_FT,
+        YTrain_FT,
+    ) = load_data_from_files(
+        config.cases_dir / train,
+        config.cases_dir / val,
+        config.cases_dir / test,
+        use_multirest,
+    )
+    w2i, i2w = check_and_retrieveVocabulary_from_files(
+        nameOfVoc=nameOfVoc,
+        use_multirest=use_multirest,
+        encoding=encoding,
+        YTrain=YFTrain,
+        YVal=YFVal,
+        YTest=YFTest,
+        YTrain_FT=YTrain_FT,
+    )
 
     print(w2i)
     print("Vocabulary size:", len(w2i.keys()))
 
     gen = train_data_generator(
-        XFiles=XFTrain, YFiles=YFTrain,
+        XFiles=XFTrain,
+        YFiles=YFTrain,
         batch_size=16,
         width_reduction=2,
         w2i=w2i,
         device=torch.device("cpu"),
-        encoding=encoding
+        encoding=encoding,
     )
     x, xl, y, yl = next(gen)
     print(x.shape, xl.shape, y.shape, yl.shape)
