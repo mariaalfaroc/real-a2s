@@ -12,22 +12,20 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 import config
-from my_utils.metrics import str2bool
 from network.model import CTCTrainedCRNN
 from my_utils.encoding_convertions import ENCODING_OPTIONS
 from my_utils.data import (
-    train_data_generator,
     load_data_from_files,
     check_and_retrieveVocabulary_from_files,
 )
+from my_utils.generators import train_data_generator
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Supervised training arguments.")
     parser.add_argument(
         "--use_multirest",
-        type=str2bool,
-        default="False",
+        action="store_true",
         help="Whether to use samples that contain multirest",
     )
     parser.add_argument(
@@ -52,14 +50,12 @@ def parse_arguments():
     parser.add_argument("--test", type=str, required=True, help="Test data partition")
     parser.add_argument(
         "--trainmodel",
-        type=str2bool,
-        default="True",
+        action="store_true",
         help="Whether to initially train the model",
     )
     parser.add_argument(
         "--finetune",
-        type=str2bool,
-        default="False",
+        action="store_true",
         help="Whether to finetune the model",
     )
     parser.add_argument(
@@ -98,9 +94,9 @@ def main():
     output_dir = config.output_dir / f"{case}_{args.encoding}"
     os.makedirs(output_dir, exist_ok=True)
     nameOfVoc = "Vocab"
-    nameOfVoc = nameOfVoc + "_woutmultirest" if not args.use_multirest else nameOfVoc
-    nameOfVoc = nameOfVoc + "_" + args.train.split("_")[0]
-    nameOfVoc = nameOfVoc + "_" + args.encoding
+    nameOfVoc += "_withmultirest" if args.use_multirest else ""
+    nameOfVoc += "_" + args.train.split("_")[0]
+    nameOfVoc += "_" + args.encoding
 
     # Set filepaths outputs
     multirest_appedix = "_withmultirest" if args.use_multirest else ""
@@ -163,67 +159,26 @@ def main():
 
     # Fine tune the model:
     if args.finetune == True:
-        # Checking that pretrained model exists:
-        assert os.path.exists(model_filepath), "Model does not exist"
-        model.load(model_filepath)
-        print(f"Loaded pretrained model from {model_filepath}")
-
-        # Filepaths globals
-        case = args.train.split("_")[0]
-        output_dir = config.output_dir / f"{case}_{args.encoding}"
-        os.makedirs(output_dir, exist_ok=True)
-        nameOfVoc = "Vocab"
-        nameOfVoc = (
-            nameOfVoc + "_woutmultirest" if not args.use_multirest else nameOfVoc
-        )
-        nameOfVoc = nameOfVoc + "_" + args.train.split("_")[0]
-        nameOfVoc = nameOfVoc + "_" + args.encoding
-        multirest_appedix = "_withmultirest" if args.use_multirest else ""
-        updateFT_appendix = "_update" + "".join([u.capitalize() for u in args.updateFT])
-        model_filepath = output_dir / f"model{multirest_appedix}{updateFT_appendix}.pt"
-        logs_path = output_dir / f"results{multirest_appedix}{updateFT_appendix}.csv"
-
-        # Loading data
-        (
-            XFTrain,
-            YFTrain,
-            XFVal,
-            YFVal,
-            XFTest,
-            YFTest,
-            XTrain_FT,
-            YTrain_FT,
-        ) = load_data_from_files(
-            config.cases_dir / args.train,
-            config.cases_dir / args.val,
-            config.cases_dir / args.test,
-            args.use_multirest,
-        )
-
+        # Checking that there is data for fine tuning
         assert len(XTrain_FT) > 0, "No data for fine tuning in the partition"
         print(f"Fine tuning with {len(XTrain_FT)} elements")
 
-        # Dictionaries
-        w2i_ft, _ = check_and_retrieveVocabulary_from_files(
-            nameOfVoc=nameOfVoc,
-            use_multirest=args.use_multirest,
-            encoding=args.encoding,
-            YTrain=YFTrain,
-            YVal=YFVal,
-            YTest=YFTest,
-            YTrain_FT=YTrain_FT,
-        )
+        # Checking that pretrained model exists
+        assert os.path.exists(model_filepath), "Model does not exist"
+        model.load(model_filepath)
+        print(f"Loaded pretrained model from {model_filepath}")
 
         # Freezing the model except for the specified parts
         if len(args.updateFT) >= 1 and args.updateFT[0] != "ALL":
             model.updateModel(list_update_elements=args.updateFT)
 
-        # Destination paths
-        model_filepath = model_filepath.parent / model_filepath.name.replace(
-            ".pt", f"_ft-{args.epochs}epochs.pt"
+        # Filepaths globals
+        updateFT_appendix = "".join([u.capitalize() for u in args.updateFT])
+        modelFT_filepath = model_filepath.replace(
+            ".pt", f"_ft{updateFT_appendix}-{args.epochs}epochs.pt"
         )
-        logs_path = logs_path.parent / logs_path.name.replace(
-            ".csv", f"-{args.epochs}epochs.csv"
+        logsFT_path = logs_path.replace(
+            ".csv", f"_ft{updateFT_appendix}-{args.epochs}epochs.csv"
         )
 
         # Fine-tune, validate, and test the model
@@ -233,7 +188,7 @@ def main():
                 YFiles=YTrain_FT,
                 batch_size=args.batch_size,
                 width_reduction=model.model.encoder.width_reduction,
-                w2i=w2i_ft,
+                w2i=w2i,
                 device=device,
                 encoding=args.encoding,
             ),
@@ -243,8 +198,8 @@ def main():
             test_data=(XFTest, YFTest),
             batch_size=args.batch_size,
             patience=args.patience,
-            weights_path=model_filepath,
-            logs_path=logs_path,
+            weights_path=modelFT_filepath,
+            logs_path=logsFT_path,
         )
 
     pass
