@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 
-from my_utils.data import IMG_HEIGHT, NUM_CHANNELS
+from my_utils.preprocessing import IMG_HEIGHT, NUM_CHANNELS
 
 
 class CNN(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self):
         super(CNN, self).__init__()
         layers = [
             # First block
@@ -29,7 +29,7 @@ class CNN(nn.Module):
 
 
 class RNN(nn.Module):
-    def __init__(self, input_size: int, output_size: int) -> None:
+    def __init__(self, input_size: int, output_size: int):
         super(RNN, self).__init__()
         self.input_size = input_size
         self.blstm = nn.LSTM(
@@ -54,7 +54,7 @@ class RNN(nn.Module):
 
 
 class CRNN(nn.Module):
-    def __init__(self, output_size: int) -> None:
+    def __init__(self, output_size: int):
         super(CRNN, self).__init__()
         # CNN
         self.encoder = CNN()

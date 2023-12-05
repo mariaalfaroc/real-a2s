@@ -12,19 +12,14 @@ from pyMV2H.converter.midi_converter import MidiConverter as Converter
 from my_utils.encoding_convertions import decoupledDotKern2Kern, decoupledKern2Kern
 
 
-def ctc_greedy_decoder(
-    y_pred: torch.Tensor, xl: List[int], i2w: Dict[int, str]
-) -> List[List[str]]:
-    y_pred_decoded = []
-    for s, l in zip(y_pred, xl):
-        # Get real lenght
-        s = s[:l, :]
-        # Best path
-        s = torch.argmax(s, dim=-1)
-        # Merge repeated elements
-        s = torch.unique_consecutive(s, dim=-1)
-        # Convert to string; len(i2w) -> CTC-blank
-        y_pred_decoded.append([i2w[int(i)] for i in s if int(i) != len(i2w)])
+def ctc_greedy_decoder(y_pred: torch.Tensor, i2w: Dict[int, str]) -> List[str]:
+    # y_pred = [seq_len, num_classes]
+    # Best path
+    y_pred_decoded = torch.argmax(y_pred, dim=1)
+    # Merge repeated elements
+    y_pred_decoded = torch.unique_consecutive(y_pred_decoded, dim=0).tolist()
+    # Convert to string; len(i2w) -> CTC-blank
+    y_pred_decoded = [i2w[i] for i in y_pred_decoded if i != len(i2w)]
     return y_pred_decoded
 
 
@@ -43,7 +38,7 @@ def compute_metrics(
     return metrics
 
 
-def levenshtein(a: list, b: list) -> int:
+def levenshtein(a: List[str], b: List[str]) -> int:
     n, m = len(a), len(b)
 
     if n > m:

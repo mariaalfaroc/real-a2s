@@ -1,18 +1,21 @@
 import time
 import random
-import pathlib
 from typing import List, Dict, Tuple, Generator
 
 import torch
-import numpy as np
 import pandas as pd
 import torch.nn as nn
 from torchinfo import summary
-from madmom.audio.spectrogram import LogarithmicFilteredSpectrogram
 
 from network.modules import CRNN
-from my_utils.data import preprocess_audio, preprocess_label, IMG_HEIGHT, NUM_CHANNELS
+from my_utils.preprocessing import (
+    preprocess_audio,
+    preprocess_label,
+    IMG_HEIGHT,
+    NUM_CHANNELS,
+)
 from my_utils.metrics import ctc_greedy_decoder, compute_metrics
+from my_utils.encoding_convertions import krnConverter
 
 
 class CTCTrainedCRNN:
@@ -21,22 +24,23 @@ class CTCTrainedCRNN:
         dictionaries: Tuple[Dict[str, int], Dict[int, str]],
         encoding: str,
         device: torch.device,
-    ) -> None:
+    ):
         super(CTCTrainedCRNN, self).__init__()
         self.w2i, self.i2w = dictionaries
 
         self.device = device
-        self.encoding = encoding
+        self.krnParser = krnConverter(encoding=encoding)
 
         self.model = CRNN(output_size=len(self.w2i) + 1)  # +1 for the CTC blank!
         self.model.to(self.device)
         self.compile()
         self.summary()
 
-    def summary(self) -> None:
+    def summary(self):
         summary(self.model, input_size=[1, NUM_CHANNELS, IMG_HEIGHT, 256])
 
-    def updateModel(self, list_update_elements: list) -> None:
+    # TODO: Ask Jose about the input of this function
+    def updateModel(self, list_update_elements: list):
         for name, param in self.model.named_parameters():
             if param.requires_grad and all(
                 [u not in name for u in list_update_elements]
@@ -44,19 +48,19 @@ class CTCTrainedCRNN:
                 param.requires_grad = False
             print(f"{name} -> Update: {param.requires_grad}")
 
-    def compile(self) -> None:
+    def compile(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())
         self.compute_ctc_loss = nn.CTCLoss(
             blank=len(self.w2i), zero_infinity=True
         )  # The target index cannot be blank!
 
-    def save(self, path: pathlib.PosixPath) -> None:
+    def save(self, path: str):
         torch.save(self.model.state_dict(), path)
 
-    def load(self, path: pathlib.PosixPath) -> None:
+    def load(self, path: str):
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
-    def on_train_begin(self, patience: int) -> None:
+    def on_train_begin(self, patience: int):
         self.logs = {"loss": [], "val_ser": [], "val_mv2h": [], "val_recon_ser": []}
         self.best_val_ser = float("inf")
         self.best_epoch = 0
@@ -87,26 +91,12 @@ class CTCTrainedCRNN:
         steps_per_epoch: int,
         val_data: Tuple[List[str], List[str]],
         test_data: Tuple[List[str], List[str]],
-        batch_size: int,
         patience: int,
-        weights_path: pathlib.PosixPath,
-        logs_path: pathlib.PosixPath,
-    ) -> None:
-        # Preprocess val data and leave in RAM
+        weights_path: str,
+        logs_path: str,
+    ):
         XFVal, YFVal = val_data
-        XVal, XLVal = map(
-            list,
-            zip(
-                *[
-                    preprocess_audio(xf, self.model.encoder.width_reduction)
-                    for xf in XFVal
-                ]
-            ),
-        )
-        YVal = [
-            preprocess_label(yf, training=False, w2i=self.w2i, encoding=self.encoding)
-            for yf in YFVal
-        ]
+        XFTest, YFTest = test_data
 
         self.on_train_begin(patience=patience)
         for epoch in range(epochs):
@@ -126,12 +116,10 @@ class CTCTrainedCRNN:
             # Validating
             self.model.eval()
             metrics = self.evaluate(
-                X=XVal,
-                XL=XLVal,
-                Y=YVal,
-                batch_size=batch_size,
-                encoding=self.encoding,
-                aux_name="",
+                XFiles=XFVal,
+                YFiles=YFVal,
+                krnParser=self.krnParser,
+                aux_name=str(weights_path).split("/")[-2],
                 print_metrics=False,
             )
             for k, v in metrics.items():
@@ -165,28 +153,11 @@ class CTCTrainedCRNN:
         print(
             f"Evaluating best validation model (at epoch {self.best_epoch}) over test data"
         )
-        # Preprocess test data and leave in RAM
-        XFTest, YFTest = test_data
-        XTest, XLTest = map(
-            list,
-            zip(
-                *[
-                    preprocess_audio(xf, self.model.encoder.width_reduction)
-                    for xf in XFTest
-                ]
-            ),
-        )
-        YTest = [
-            preprocess_label(yf, training=False, w2i=self.w2i, encoding=self.encoding)
-            for yf in YFTest
-        ]
         # Evaluate
         metrics = self.evaluate(
-            X=XTest,
-            XL=XLTest,
-            Y=YTest,
-            batch_size=batch_size,
-            encoding=self.encoding,
+            XFiles=XFTest,
+            YFiles=YFTest,
+            krnParser=self.krnParser,
             aux_name=str(weights_path).split("/")[-2],
             print_random_samples=True,
         )
@@ -199,38 +170,39 @@ class CTCTrainedCRNN:
 
     def evaluate(
         self,
-        X: List[LogarithmicFilteredSpectrogram],
-        XL: List[int],
-        Y: List[List[str]],
-        batch_size: int,
-        encoding: str,
+        XFiles: List[str],
+        YFiles: List[str],
+        krnParser: krnConverter,
         aux_name: str,
         print_metrics: bool = True,
         print_random_samples: bool = False,
     ) -> Dict[str, float]:
+        Y = []
         YPRED = []
 
         with torch.no_grad():
-            for start in range(0, len(X), batch_size):
-                x, xl = X[start : start + batch_size], XL[start : start + batch_size]
-                # Zero-pad audios to maximum batch audio width
-                max_width = max(x, key=np.shape).shape[2]
-                x = np.array(
-                    [
-                        np.pad(
-                            i, pad_width=((0, 0), (0, 0), (0, max_width - i.shape[2]))
-                        )
-                        for i in x
-                    ],
-                    dtype=np.float32,
+            for xf, yf in zip(XFiles, YFiles):
+                # Preprocess audio
+                x = preprocess_audio(
+                    xf,
+                    training=False,
+                    width_reduction=self.model.encoder.width_reduction,
                 )
-                x = torch.from_numpy(x).to(self.device)
+                x = torch.from_numpy(x).unsqueeze(0).to(self.device)
                 # Obtain predictions
-                ypred = self.model(x).detach().cpu()
+                ypred = self.model(x)[0].detach().cpu()
                 # CTC-greedy decoder
-                YPRED.extend(ctc_greedy_decoder(ypred, xl, self.i2w))
+                YPRED.append(ctc_greedy_decoder(ypred, self.i2w))
 
-        metrics = compute_metrics(Y, YPRED, encoding=encoding, aux_name=aux_name)
+                # Preprocess label
+                y = preprocess_label(
+                    yf, training=False, w2i=self.w2i, krnParser=self.krnParser
+                )
+                Y.append(y)
+
+        metrics = compute_metrics(
+            Y, YPRED, encoding=krnParser.encoding, aux_name=aux_name
+        )
 
         if print_metrics:
             for k, v in metrics.items():
@@ -244,7 +216,7 @@ class CTCTrainedCRNN:
 
         return metrics
 
-    def save_logs(self, path: pathlib.PosixPath) -> None:
+    def save_logs(self, path: str):
         # The last line on the CSV file is the one corresponding to the best validation model
         for k in self.logs.keys():
             if "test" not in k:

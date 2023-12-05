@@ -6,9 +6,10 @@ from madmom.audio.spectrogram import (
     LogarithmicFilterbank,
     LogarithmicFilteredSpectrogram,
 )
-
-from my_utils.data import NUM_CHANNELS
 from my_utils.encoding_convertions import krnConverter
+
+NUM_CHANNELS = 1
+IMG_HEIGHT = NUM_BINS = 229
 
 
 def get_spectrogram_from_file(audiofilename: str) -> LogarithmicFilteredSpectrogram:
@@ -36,20 +37,26 @@ def get_spectrogram_from_file(audiofilename: str) -> LogarithmicFilteredSpectrog
     return x
 
 
-def preprocess_audio(path: str, width_reduction: int) -> Tuple[np.ndarray, int]:
-    x = get_spectrogram_from_file(path)
-    # [num_frames, num_bins] == [width, height]
-    x = np.transpose(x)
-    # [height, width]
+def preprocess_audio(
+    path: str,
+    training: bool,
+    width_reduction: int,
+) -> Union[Tuple[np.ndarray, int], np.ndarray]:
+    x = get_spectrogram_from_file(path)  # [num_frames, num_bins] == [width, height]
+    x = np.transpose(x)  # [height, width]
     x = np.flip(x, 0)  # Because of the ordering of the bins: from 0 Hz to max_freq Hz
-    x = (x - np.amin(x)) / (np.amax(x) - np.amin(x))
-    x = np.expand_dims(x, 0)
-    # [1, height, width]
-    return x, x.shape[2] // width_reduction
+    x = (x - np.amin(x)) / (np.amax(x) - np.amin(x))  # Normalize
+    x = np.expand_dims(x, 0)  # [1, height, width]
+    if training:
+        return x, x.shape[2] // width_reduction
+    return x
 
 
 def preprocess_label(
-    path: str, training: bool, w2i: Dict[str, int], krnParser: krnConverter
+    path: str,
+    training: bool,
+    w2i: Dict[str, int],
+    krnParser: krnConverter,
 ) -> Union[Tuple[List[int], int], List[str]]:
     y = krnParser.convert(path)
     if training:
@@ -62,7 +69,7 @@ def preprocess_label(
 
 
 def ctc_preprocess(
-    x: List[LogarithmicFilteredSpectrogram],
+    x: List[np.ndarray],
     xl: List[int],
     y: List[List[int]],
     yl: List[int],

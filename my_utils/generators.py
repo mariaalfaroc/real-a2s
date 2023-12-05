@@ -15,33 +15,35 @@ def train_data_generator(
     width_reduction: int,
     w2i: Dict[str, int],
     device: torch.device,
-    encoding: str,
+    krnParser: krnConverter,
 ) -> Generator[
     Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None
 ]:  # Generator[yield_type, send_type, return_type]
-    # Kern converter
-    krnParser = krnConverter(encoding=encoding)
-
-    # Load all data in RAM
-    X, XL = map(list, zip(*[preprocess_audio(xf, width_reduction) for xf in XFiles]))
-    Y, YL = map(
-        list,
-        zip(
-            *[
-                preprocess_label(yf, training=True, w2i=w2i, krnParser=krnParser)
-                for yf in YFiles
-            ]
-        ),
-    )
-
     index = 0
     while True:
-        x, xl, y, yl = (
-            X[index : index + batch_size],
-            XL[index : index + batch_size],
-            Y[index : index + batch_size],
-            YL[index : index + batch_size],
+        # Get batch files
+        xf = XFiles[index : index + batch_size]
+        yf = YFiles[index : index + batch_size]
+        # Load batch files
+        x, xl = map(
+            list,
+            zip(
+                *[
+                    preprocess_audio(f, training=True, width_reduction=width_reduction)
+                    for f in xf
+                ]
+            ),
         )
+        y, yl = map(
+            list,
+            zip(
+                *[
+                    preprocess_label(f, training=True, w2i=w2i, krnParser=krnParser)
+                    for f in yf
+                ]
+            ),
+        )
+        # CTC preprocess
         x, xl, y, yl = ctc_preprocess(x, xl, y, yl, pad_index=w2i["<pad>"])
         yield x.to(device), xl.to(device), y.to(device), yl.to(device)
 
