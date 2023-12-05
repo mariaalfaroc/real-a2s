@@ -14,7 +14,7 @@ torch.manual_seed(42)
 import config
 from network.model import CTCTrainedCRNN
 from my_utils.encoding_convertions import ENCODING_OPTIONS
-from my_utils.data import (
+from my_utils.loader import (
     load_data_from_files,
     check_and_retrieveVocabulary_from_files,
 )
@@ -145,13 +145,12 @@ def main():
                 width_reduction=model.model.encoder.width_reduction,
                 w2i=w2i,
                 device=device,
-                encoding=args.encoding,
+                krnParser=model.krnParser,
             ),
             epochs=args.epochs,
             steps_per_epoch=len(XFTrain) // args.batch_size,
             val_data=(XFVal, YFVal),
             test_data=(XFTest, YFTest),
-            batch_size=args.batch_size,
             patience=args.patience,
             weights_path=model_filepath,
             logs_path=logs_path,
@@ -190,13 +189,12 @@ def main():
                 width_reduction=model.model.encoder.width_reduction,
                 w2i=w2i,
                 device=device,
-                encoding=args.encoding,
+                krnParser=model.krnParser,
             ),
             epochs=args.epochs,
             steps_per_epoch=len(XTrain_FT) // args.batch_size,
             val_data=(XFVal, YFVal),
             test_data=(XFTest, YFTest),
-            batch_size=args.batch_size,
             patience=args.patience,
             weights_path=modelFT_filepath,
             logs_path=logsFT_path,
