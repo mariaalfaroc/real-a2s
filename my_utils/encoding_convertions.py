@@ -5,9 +5,9 @@ ENCODING_OPTIONS = ["kern", "decoupled", "decoupled_dot"]
 
 # NOTE
 # Multirest are encoded like "rr" in the simplified kern format of the PrIMuS dataset
-# but using that encoding would not render (using Verovio) the multi-bar rest as a single bar rest.
+# but using that encoding would not render (using Verovio) the multi-bar rest as a single bar rest
 # If we change the dataset, MAKE SURE OF THIS!
-# The SARA dataset (JC dataset) does not contain multirests.
+# The SARA dataset does not contain multirests
 
 
 class krnConverter:
