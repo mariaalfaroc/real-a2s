@@ -1,24 +1,24 @@
-import os
-import gc
-import random
 import argparse
+import gc
+import os
+import random
 
-import torch
 import numpy as np
+import torch
+
+import config
+from my_utils.encoding_convertions import ENCODING_OPTIONS
+from my_utils.generators import train_data_generator
+from my_utils.loader import (
+    check_and_retrieveVocabulary_from_files,
+    load_data_from_files,
+)
+from network.model import CTCTrainedCRNN
 
 # Seed
 random.seed(42)
 np.random.seed(42)
 torch.manual_seed(42)
-
-import config
-from network.model import CTCTrainedCRNN
-from my_utils.encoding_convertions import ENCODING_OPTIONS
-from my_utils.loader import (
-    load_data_from_files,
-    check_and_retrieveVocabulary_from_files,
-)
-from my_utils.generators import train_data_generator
 
 
 def parse_arguments():
@@ -135,7 +135,7 @@ def main():
     )
 
     # Pretrain:
-    if args.trainmodel == True:
+    if args.trainmodel:
         # Train, validate, and test
         model.fit(
             train_data_generator(
@@ -157,7 +157,7 @@ def main():
         )
 
     # Fine tune the model:
-    if args.finetune == True:
+    if args.finetune:
         # Checking that there is data for fine tuning
         assert len(XTrain_FT) > 0, "No data for fine tuning in the partition"
         print(f"Fine tuning with {len(XTrain_FT)} elements")
