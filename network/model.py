@@ -39,15 +39,6 @@ class CTCTrainedCRNN:
     def summary(self):
         summary(self.model, input_size=[1, NUM_CHANNELS, IMG_HEIGHT, 256])
 
-    # TODO: Ask Jose about the input of this function
-    def updateModel(self, list_update_elements: list):
-        for name, param in self.model.named_parameters():
-            if param.requires_grad and all(
-                [u not in name for u in list_update_elements]
-            ):
-                param.requires_grad = False
-            print(f"{name} -> Update: {param.requires_grad}")
-
     def compile(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())
         self.compute_ctc_loss = nn.CTCLoss(
