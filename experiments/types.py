@@ -84,7 +84,9 @@ def train_model(
                 "weights",
                 f"model_{encoding}_{fold}.pt",
             )
+            os.makedirs(os.path.dirname(weights_path), exist_ok=True)
             logs_path = weights_path.replace("weights", "logs").replace(".pt", ".csv")
+            os.makedirs(os.path.dirname(logs_path), exist_ok=True)
 
             # Evaluate the model
             model.fit(
@@ -167,6 +169,7 @@ def test_model(
                     f"experiment_{experiment_id}",
                 )
             )
+            os.makedirs(os.path.dirname(logs_path), exist_ok=True)
 
             # Evaluate the model
             model.fit(
@@ -263,7 +266,9 @@ def finetune_model(
                 f"experiment_{experiment_dict['from_experiment']}",
                 f"experiment_{experiment_id}",
             )
+            os.makedirs(os.path.dirname(weights_path), exist_ok=True)
             logs_path = weights_path.replace("weights", "logs").replace(".pt", ".csv")
+            os.makedirs(os.path.dirname(logs_path), exist_ok=True)
 
             # Evaluate the model
             model.fit(
