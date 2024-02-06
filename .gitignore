@@ -352,5 +352,5 @@ MigrationBackup/
 # Logs
 *.logs
 joblib_cache/
-CHECK/
-ICASSP-Data/
+real_a2s_sax_dataset
+experiments/results
