@@ -1,3 +1,4 @@
+import os
 from typing import List, Dict, Tuple, Generator
 
 import torch
@@ -5,6 +6,32 @@ from sklearn.utils import shuffle
 
 from my_utils.encoding_convertions import krnConverter
 from my_utils.preprocessing import preprocess_audio, preprocess_label, ctc_preprocess
+
+
+def load_data_from_fold_file(
+    fold_path: str,
+    x_folder: List[str],
+    y_folder: str,
+    percentage_size: float = 1.0,
+):
+    if isinstance(x_folder, str):
+        x_folder = [x_folder]
+
+    XFiles = []
+    YFiles = []
+    with open(fold_path, "r") as file:
+        for line in file:
+            x, y = line.strip().split("\t")
+            for xf in x_folder:
+                XFiles.append(os.path.join(xf, x))
+                YFiles.append(os.path.join(y_folder, y))
+
+    if percentage_size < 1.0 and percentage_size is not None:
+        XFiles, YFiles = shuffle(XFiles, YFiles, random_state=42)
+        XFiles = XFiles[: int(len(XFiles) * percentage_size)]
+        YFiles = YFiles[: int(len(YFiles) * percentage_size)]
+
+    return XFiles, YFiles
 
 
 def train_data_generator(
