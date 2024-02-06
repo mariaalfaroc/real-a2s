@@ -8,29 +8,48 @@ from my_utils.encoding_convertions import krnConverter
 from my_utils.preprocessing import preprocess_audio, preprocess_label, ctc_preprocess
 
 
-def load_data_from_fold_file(
+def load_train_data_from_fold_file(
     fold_path: str,
     x_folder: List[str],
     y_folder: str,
-    percentage_size: float = 1.0,
-):
-    if isinstance(x_folder, str):
-        x_folder = [x_folder]
+    percentage_size: List[float] = [1.0, 1.0],
+) -> Tuple[List[str], List[str]]:
+    # For train
+    assert len(x_folder) == len(
+        percentage_size
+    ), "x_folder and percentage_size must have the same length!"
+    TotalXFiles = []
+    TotalYFiles = []
+    for xf, ps in zip(x_folder, percentage_size):
+        XFiles, YFiles = load_test_data_from_fold_file(
+            fold_path=fold_path,
+            x_folder=xf,
+            y_folder=y_folder,
+            percentage_size=ps,
+        )
+        TotalXFiles.extend(XFiles)
+        TotalYFiles.extend(YFiles)
+    return TotalXFiles, TotalYFiles
 
+
+def load_test_data_from_fold_file(
+    fold_path: str,
+    x_folder: str,
+    y_folder: str,
+    percentage_size: float = 1.0,
+) -> Tuple[List[str], List[str]]:
+    # For val, test and finetune
     XFiles = []
     YFiles = []
     with open(fold_path, "r") as file:
         for line in file:
             x, y = line.strip().split("\t")
-            for xf in x_folder:
-                XFiles.append(os.path.join(xf, x))
-                YFiles.append(os.path.join(y_folder, y))
-
+            XFiles.append(os.path.join(x_folder, x))
+            YFiles.append(os.path.join(y_folder, y))
     if percentage_size < 1.0 and percentage_size is not None:
         XFiles, YFiles = shuffle(XFiles, YFiles, random_state=42)
         XFiles = XFiles[: int(len(XFiles) * percentage_size)]
         YFiles = YFiles[: int(len(YFiles) * percentage_size)]
-
     return XFiles, YFiles
 
 
