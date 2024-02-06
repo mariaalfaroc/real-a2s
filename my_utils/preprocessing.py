@@ -1,3 +1,4 @@
+import joblib
 from typing import List, Dict, Tuple, Union
 
 import torch
@@ -8,6 +9,7 @@ from madmom.audio.spectrogram import (
 )
 from my_utils.encoding_convertions import krnConverter
 
+MEMORY = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=0)
 NUM_CHANNELS = 1
 IMG_HEIGHT = NUM_BINS = 229
 
@@ -36,7 +38,7 @@ def get_spectrogram_from_file(audiofilename: str) -> LogarithmicFilteredSpectrog
     # num_bins will be the same for all files
     return x
 
-
+@MEMORY.cache
 def preprocess_audio(
     path: str,
     training: bool,
@@ -51,7 +53,7 @@ def preprocess_audio(
         return x, x.shape[2] // width_reduction
     return x
 
-
+@MEMORY.cache
 def preprocess_label(
     path: str,
     training: bool,
