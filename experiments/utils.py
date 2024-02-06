@@ -7,6 +7,8 @@ from typing import Dict, Tuple
 from my_utils.encoding_convertions import krnConverter
 
 PARTITIONS_PATH = "experiments/partitions"
+RESULTS_PATH = "experiments/results"
+os.makedirs(RESULTS_PATH, exist_ok=True)
 
 ############################################### Download dataset:
 
