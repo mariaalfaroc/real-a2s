@@ -90,9 +90,9 @@ def train_data_generator(
             ),
         )
         # CTC preprocess
-        x, xl, y, yl = ctc_preprocess(x, xl, y, yl, pad_index=w2i["<pad>"])
+        x, xl, y, yl = ctc_preprocess(x, xl, y, yl, pad_index=w2i["<PAD>"])
         yield x.to(device), xl.to(device), y.to(device), yl.to(device)
 
-        index = (index + batch_size) % len(X)
+        index = (index + batch_size) % len(XFiles)
         if index == 0:
-            X, XL, Y, YL = shuffle(X, XL, Y, YL, random_state=42)
+            XFiles, YFiles = shuffle(XFiles, YFiles, random_state=42)

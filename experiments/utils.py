@@ -73,7 +73,7 @@ def check_and_retrieve_vocabulary(
         i2w = {v: k for k, v in w2i.items()}
     else:
         os.makedirs(os.path.join(VOCAB_PATH, sax_type), exist_ok=True)
-        w2i, i2w = make_vocabulary()
+        w2i, i2w = make_vocabulary(sax_type=sax_type, encoding=encoding)
         with open(w2i_path, "w") as file:
             json.dump(w2i, file)
 
