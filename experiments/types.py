@@ -2,6 +2,7 @@ import os
 from typing import Dict
 
 import torch
+import pandas as pd
 
 from network.model import CTCTrainedCRNN
 from experiments.config import EXPERIMENTS
@@ -172,18 +173,16 @@ def test_model(
             os.makedirs(os.path.dirname(logs_path), exist_ok=True)
 
             # Evaluate the model
-            model.fit(
-                # No training!
-                train_data_generator=None,
-                epochs=0,
-                steps_per_epoch=0,
-                val_data=None,
-                patience=0,
-                # Only testing!
-                test_data=(XTestFiles, YTestFiles),
-                weights_path=weights_path,
-                logs_path=logs_path,
+            metrics = model.evaluate(
+                XFiles=XTestFiles,
+                YFiles=YTestFiles,
+                krnParser=model.krnParser,
+                aux_name=logs_path.split("/")[-2],
+                print_metrics=True,
+                print_random_samples=True,
             )
+            metrics = {f"test_{k}": v for k, v in metrics.items()}
+            pd.DataFrame(metrics, index=[0]).to_csv(logs_path, index=False)
 
 
 #################################################################### EXPERIMENT TYPE 3 (finetune an already trained model)
