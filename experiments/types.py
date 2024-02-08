@@ -156,7 +156,7 @@ def test_model(
                     encoding=encoding,
                     device=device,
                 )
-                model = model.load(path=weights_path)
+                model.load(path=weights_path)
             else:
                 raise FileNotFoundError(f"Model {weights_path} not found!")
 
@@ -257,7 +257,7 @@ def finetune_model(
                     encoding=encoding,
                     device=device,
                 )
-                model = model.load(path=from_weights_path)
+                model.load(path=from_weights_path)
             else:
                 raise FileNotFoundError(f"Model {from_weights_path} not found!")
 
