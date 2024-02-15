@@ -1,7 +1,6 @@
+numpy==1.19.5
 music21
 pyMV2H
 torchinfo
 pandas
 scikit-learn
-Cython
-madmom
