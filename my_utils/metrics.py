@@ -12,14 +12,16 @@ from pyMV2H.converter.midi_converter import MidiConverter as Converter
 from my_utils.encoding_convertions import decoupledDotKern2Kern, decoupledKern2Kern
 
 
-def ctc_greedy_decoder(y_pred: torch.Tensor, i2w: Dict[int, str]) -> List[str]:
+def ctc_greedy_decoder(
+    y_pred: torch.Tensor, i2w: Dict[int, str], blank_index: int
+) -> List[str]:
     # y_pred = [seq_len, num_classes]
     # Best path
     y_pred_decoded = torch.argmax(y_pred, dim=1)
     # Merge repeated elements
     y_pred_decoded = torch.unique_consecutive(y_pred_decoded, dim=0).tolist()
-    # Convert to string; len(i2w) -> CTC-blank
-    y_pred_decoded = [i2w[i] for i in y_pred_decoded if i != len(i2w)]
+    # Convert to string (remove CTC-blank token)
+    y_pred_decoded = [i2w[i] for i in y_pred_decoded if i != blank_index]
     return y_pred_decoded
 
 

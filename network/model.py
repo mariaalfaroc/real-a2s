@@ -27,11 +27,13 @@ class CTCTrainedCRNN:
     ):
         super(CTCTrainedCRNN, self).__init__()
         self.w2i, self.i2w = dictionaries
+        self.pad_index = self.w2i["<PAD>"]
 
         self.device = device
         self.krnParser = krnConverter(encoding=encoding)
 
-        self.model = CRNN(output_size=len(self.w2i) + 1)  # +1 for the CTC blank!
+        # We use the same token for padding and CTC-blank; w2i contains the token "<PAD>"
+        self.model = CRNN(output_size=len(self.w2i))
         self.model.to(self.device)
         self.compile()
         self.summary()
@@ -41,9 +43,7 @@ class CTCTrainedCRNN:
 
     def compile(self):
         self.optimizer = torch.optim.Adam(self.model.parameters())
-        self.compute_ctc_loss = nn.CTCLoss(
-            blank=len(self.w2i), zero_infinity=True
-        )  # The target index cannot be blank!
+        self.compute_ctc_loss = nn.CTCLoss(blank=self.pad_index, zero_infinity=True)
 
     def save(self, path: str):
         torch.save(self.model.state_dict(), path)
@@ -183,7 +183,7 @@ class CTCTrainedCRNN:
                 # Obtain predictions
                 ypred = self.model(x)[0].detach().cpu()
                 # CTC-greedy decoder
-                YPRED.append(ctc_greedy_decoder(ypred, self.i2w))
+                YPRED.append(ctc_greedy_decoder(ypred, self.i2w, self.pad_index))
 
                 # Preprocess label
                 y = preprocess_label(
